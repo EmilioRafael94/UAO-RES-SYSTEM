@@ -17,7 +17,9 @@
     <div class="navbar-right">
         <a href="{% url 'admin_portal:admin_dashboard' %}" class="nav-link">Dashboard</a>
         <a href="{% url 'admin_portal:calendar_view' %}" class="nav-link">View Calendar</a>
-        <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        <a href="{% url 'admin_portal:admin_profile' %}">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        </a>
     </div>
 </div>
 
