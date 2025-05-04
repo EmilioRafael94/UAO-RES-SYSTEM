@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Calendar</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+
+    <!-- FullCalendar CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.2.0/fullcalendar.min.css" rel="stylesheet" />
+    <style>
+        .calendar-container {
+            width: 80%;
+            margin: 0 auto;
+            text-align: center;
+        }
+        #calendar {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header>
+        <div class="logo">
+            <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+        </div>
+
+        <div class="right-nav">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+            <a href="{% url 'user_portal:user_myreservation' %}">My Reservations</a>
+            <a href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a>
+            <a href="{% url 'user_portal:user_calendar' %}">View Calendar</a>
+            <a href="{% url 'user_portal:user_profile' %}">Profile</a>
+        </div>
+    </header>
+
+    <!-- Calendar Section -->
+    <div class="calendar-container">
+        <h1>User Calendar</h1>
+        <div id="calendar"></div>
+    </div>
+
+    <!-- jQuery (necessary for FullCalendar) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- FullCalendar JS dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.2.0/fullcalendar.min.js"></script>
+
+    <!-- Initialize FullCalendar -->
+    <script>
+        $(document).ready(function() {
+            $('#calendar').fullCalendar({
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,agendaWeek,agendaDay'
+                },
+                height: 950, // You can adjust this value as needed
+                aspectRatio: 1.8,
+                themeSystem: 'standard',
+                fixedWeekCount: false,
+                events: [
+                    {
+                        title: 'Basketball Practice',
+                        start: '2025-05-05T14:00:00',
+                        end: '2025-05-05T16:00:00',
+                        className: 'event-approved'
+                    },
+                    {
+                        title: 'Volleyball Tournament',
+                        start: '2025-05-08T09:00:00',
+                        end: '2025-05-08T17:00:00',
+                        className: 'event-approved'
+                    },
+                    {
+                        title: 'Soccer Team Meeting',
+                        start: '2025-05-10T13:00:00',
+                        end: '2025-05-10T14:30:00',
+                        className: 'event-pending'
+                    },
+                    {
+                        title: 'Swimming Practice',
+                        start: '2025-05-12',
+                        end: '2025-05-14',
+                        className: 'event-pending'
+                    }
+                ],
+                eventClick: function(calEvent, jsEvent, view) {
+                    alert('Event: ' + calEvent.title);
+                },
+                timeFormat: 'h:mm a'
+            });
+        });
+    </script>
+</body>
+</html>
