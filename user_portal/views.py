@@ -1,10 +1,34 @@
-from django.shortcuts import render
-from reservations.views import make_reservation
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from .forms import UserUpdateForm, ProfileUpdateForm  # Make sure you have these forms imported
+from django.contrib import messages
 
+@login_required
 def user_dashboard(request):
-    # Your user-specific dashboard code here
-    return render(request, 'user_dashboard.html')
+    return render(request, 'user_portal/user_dashboard.html')
 
-def user_reservation(request):
-    return make_reservation(request)
+@login_required
+def user_profile(request):
+    return render(request, 'user_portal/user_profile.html')
+
+@login_required
+def update_profile(request):
+    if request.method == 'POST':
+        user_form = UserUpdateForm(request.POST, instance=request.user)
+        profile_form = ProfileUpdateForm(request.POST, instance=request.user.profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()  # Save user data
+            profile_form.save()  # Save profile data
+            messages.success(request, 'Your profile has been updated successfully!')
+            return redirect('user_portal:user_profile')  # Redirect to the profile page after saving
+    else:
+        user_form = UserUpdateForm(instance=request.user)
+        profile_form = ProfileUpdateForm(instance=request.user.profile)
+
+    context = {
+        'user_form': user_form,
+        'profile_form': profile_form
+    }
+    
+    return render(request, 'user_portal/user_profile.html', context)

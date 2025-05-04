@@ -1,0 +1,91 @@
+{% load static %}
+{% block extra_head %}\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DASHBOARD</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+    <style>
+        .dashboard-content {
+            padding: 40px;
+            background-color: #f9f9f9;
+        }
+
+        .dashboard-content h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .dashboard-content h2 {
+            color: #2c3e50;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+
+        .reservation-summary ul,
+        .notifications ul {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .reservation-summary li,
+        .notifications li {
+            margin-bottom: 5px;
+        }
+
+        .notifications {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+{% endblock %}
+
+{% block content %}
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <div class="navbar-left">
+            <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <span class="navbar-title">Xavier University Athletics Office</span>
+        </div>
+        <div class="navbar-right">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+                <a href="#">My Reservations</a>  <!-- Placeholder -->
+                <a href="#">Make Reservation</a>
+                <a href="#">View Calendar</a>
+                <a href="#">Profile</a>
+            <a href="{% url 'user_portal:user_profile' %}">
+                    <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+                </a>
+        </div>
+    </div>
+
+    <!-- DASHBOARD CONTENT -->
+    <div class="dashboard-content">
+        <h1>Welcome to Your Dashboard, {{ user.username }}!</h1>
+
+        <div class="reservation-summary">
+            <h2>Your Reservations</h2>
+            <ul>
+                <li>Total Reservations: {{ total_reservations }}</li>
+                <li>Approved: {{ approved }}</li>
+                <li>Rejected: {{ rejected }}</li>
+            </ul>
+        </div>
+
+        <div class="notifications">
+            <h2>Notifications</h2>
+            {% if notifications %}
+                <ul>
+                    {% for notification in notifications %}
+                        <li>{{ notification }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No new notifications.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
