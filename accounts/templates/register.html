@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+<main class="container">
+  <div class="form-card">
+    <h2>Create an Account</h2>
+
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <p class="{{ message.tags }}">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Full Name -->
+      <div class="form-group">
+        <label for="id_full_name">Full Name:</label>
+        <input type="text" name="full_name" id="id_full_name" required>
+      </div>
+
+      <!-- Role: Student or Alumni/Guest -->
+      <div class="form-group">
+        <label for="role">Are you a student or an alumni/guest?</label>
+        <select id="role" name="role" required onchange="toggleFields()">
+          <option value="">-- Select --</option>
+          <option value="student">Student of XU</option>
+          <option value="guest">Alumni/Guest</option>
+        </select>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group" id="email-group">
+        <label for="id_email">Email:</label>
+        <input type="email" name="email" id="id_email" required>
+        <!-- Validation message for student role -->
+        <small id="email-note" class="hidden" style="color: red;">Students must use @my.xu.edu.ph email</small>
+      </div>
+
+      <!-- Course (initially hidden, shown only if Student of XU is selected) -->
+      <div class="form-group hidden" id="course-group">
+        <label for="id_course">Course:</label>
+        <input type="text" name="course" id="id_course">
+      </div>
+
+      <!-- Phone Number -->
+      <div class="form-group">
+        <label for="id_phone">Phone Number:</label>
+        <input type="text" name="phone" id="id_phone" required>
+      </div>
+
+      <!-- Username -->
+      {{ form.username.label_tag }}
+      {{ form.username }}
+
+      <!-- Password -->
+      {{ form.password1.label_tag }}
+      {{ form.password1 }}
+
+      {{ form.password2.label_tag }}
+      {{ form.password2 }}
+
+      <!-- ID Type (Dropdown) -->
+      <div class="form-group">
+        <label for="id_id_type">ID Type:</label>
+        <select id="id_id_type" name="id_type" required>
+          <option value="">-- Select ID Type --</option>
+          <option value="school_id">School ID</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <!-- File Upload (ID Upload) -->
+      <div class="form-group">
+        <label for="id_upload">Upload ID:</label>
+        <input type="file" id="id_upload" name="id_upload" accept="image/*,.pdf" required>
+      </div>
+
+      <button type="submit" class="btn-primary">Register</button>
+    </form>
+
+    <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
+  </div>
+</main>
+
+{% if form.errors %}
+  <div class="form-errors">
+    {% for field in form %}
+      {% for error in field.errors %}
+        <p style="color: red;">{{ field.label }}: {{ error }}</p>
+      {% endfor %}
+    {% endfor %}
+    {% for error in form.non_field_errors %}
+      <p style="color: red;">{{ error }}</p>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<script>
+  // Function to toggle fields based on user role selection
+  function toggleFields() {
+    const role = document.getElementById("role").value;
+    const emailGroup = document.getElementById("email-group");
+    const emailInput = document.getElementById("id_email");
+    const courseGroup = document.getElementById("course-group");
+    const emailNote = document.getElementById("email-note");
+
+    // Initially show the email field
+    emailGroup.classList.remove("hidden");
+    emailInput.value = ""; // Reset email field
+    emailNote.classList.add("hidden"); // Hide the email note initially
+
+    // Show/hide course input field and adjust email input pattern based on role
+    if (role === "student") {
+      // If student is selected, show the course field and email validation pattern
+      courseGroup.classList.remove("hidden");
+      emailInput.setAttribute("pattern", "^[a-zA-Z0-9._%+-]+@my\\.xu\\.edu\\.ph$");
+      emailNote.classList.remove("hidden"); // Show validation note for students
+    } else if (role === "guest") {
+      // If guest is selected, allow any email and hide the course field
+      courseGroup.classList.add("hidden");
+      emailInput.removeAttribute("pattern");
+      emailNote.classList.add("hidden");
+    } else {
+      // Hide both email and course fields if no role is selected
+      emailGroup.classList.add("hidden");
+      courseGroup.classList.add("hidden");
+    }
+  }
+
+  // Ensure the course field is hidden by default when page loads
+  window.onload = function() {
+    // Hide the course field on page load
+    document.getElementById("course-group").classList.add("hidden");
+  }
+</script>
+{% endblock %}

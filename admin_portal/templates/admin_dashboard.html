@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="navbar-left">
+        <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+        <span class="navbar-title">Xavier University Athletics Office</span>
+    </div>
+    <div class="navbar-right">
+        <a href="#" class="nav-link">Dashboard</a>
+        <a href="#" class="nav-link">View Calendar</a>
+        <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+    </div>
+</div>
+
+<div class="dashboard-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Admin Dashboard</h2>
+
+        <div class="section">
+            <h3>Pending</h3>
+            <ul>
+                {% for reservation in pending %}
+                <li>
+                    <a href="{% url 'admin_dashboard' %}?id={{ reservation.id }}">
+                        {{ reservation.user.full_name }}
+                    </a>
+                </li>
+                {% empty %}
+                <li>No pending reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>Approved</h3>
+            <ul>
+                {% for reservation in approved %}
+                <li>{{ reservation.user.full_name }}</li>
+                {% empty %}
+                <li>No approved reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% if selected_reservation %}
+        <div class="reservation-card">
+            <h2>{{ selected_reservation.user.full_name }}</h2>
+            <p><strong>Facility:</strong> {{ selected_reservation.facility }}</p>
+            <div class="card-content">
+                <p><strong>Date:</strong> {{ selected_reservation.date }}</p>
+                <p><strong>Time:</strong> {{ selected_reservation.time }}</p>
+                <p><strong>Status:</strong> {{ selected_reservation.status }}</p>
+                <p><strong>Purpose:</strong> {{ selected_reservation.purpose }}</p>
+            </div>
+
+            <div class="action-buttons">
+                <form method="POST" action="{% url 'admin_approve_reservation' selected_reservation.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="approve">APPROVE</button>
+                </form>
+                <form method="POST" action="{% url 'admin_reject_reservation' selected_reservation.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="reject">REJECT</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-selection">
+            <p>No pending reservation selected.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}User Dashboard{% endblock %}
+
+{% block content %}
+    <h2>Welcome to Your Dashboard, {{ user.username }}</h2>
+    <p>Here you can view and manage your reservations.</p>
+    <section>
+        <h3>Your Reservations</h3>
+        <ul>
+            <!-- Example of how you might list reservations -->
+            {% for reservation in user.reservations.all %}
+                <li>{{ reservation.name }} - {{ reservation.date }}</li>
+            {% empty %}
+                <p>You don't have any reservations yet.</p>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}
