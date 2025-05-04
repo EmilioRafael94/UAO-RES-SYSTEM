@@ -5,5 +5,5 @@ app_name = 'admin_portal'
 
 urlpatterns = [
     path('dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('approve_reservation/<int:pk>/', views.admin_approve_reservation, name='approve_reservation'),
+    path('calendar/', views.calendar_view, name='calendar_view'),
 ]
