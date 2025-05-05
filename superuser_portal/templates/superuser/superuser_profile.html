@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superuser Profile</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'superuser_portal/styles.css' %}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="{% static 'superuser_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+        </div>
+
+        <div class="right-nav">
+            <a href="{% url 'superuser_portal:superuser_dashboard' %}">Dashboard</a>
+            <a href="{% url 'superuser_portal:manage_reservations' %}">Manage Reservations</a>
+            <a href="{% url 'superuser_portal:user_roles' %}">Users & Roles</a>
+            <a href="{% url 'superuser_portal:system_settings' %}">System Settings</a>
+            <a href="{% url 'superuser_portal:superuser_profile' %}">Profile</a>
+        </div>
+    </header>
+
+    <main>
+        <h1>Superuser Profile</h1>
+
+        <h3>Profile Information</h3>
+        <ul>
+            <li><strong>Username:</strong> {{ user.username }}</li>
+            <li><strong>Email:</strong> {{ user.email }}</li>
+            <li><strong>First Name:</strong> {{ user.first_name }}</li>
+            <li><strong>Last Name:</strong> {{ user.last_name }}</li>
+            <li><strong>Is Superuser:</strong> {{ user.is_superuser }}</li>
+        </ul>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <h3>Update Profile Information</h3>
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}">
+            <br>
+
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}">
+            <br>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" value="{{ user.email }}">
+            <br>
+
+            <label for="profile_picture">Profile Picture:</label>
+            <input type="file" id="profile_picture" name="profile_picture">
+            <br>
+
+            <button type="submit">Update Profile</button>
+        </form>
+
+        <!-- Logout Button -->
+        <form action="{% url 'accounts:logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+    </main>
+</body>
+</html>

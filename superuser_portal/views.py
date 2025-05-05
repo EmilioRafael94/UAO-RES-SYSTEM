@@ -7,6 +7,27 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.forms import UserChangeForm
+from django.contrib.auth.models import User
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+# Superuser check function
+def is_superuser(user):
+    return user.is_superuser
+
+@login_required
+@user_passes_test(is_superuser)
+def superuser_profile(request):
+    if request.method == 'POST':
+        form = UserChangeForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('superuser_portal:superuser_profile')  # Redirect to the same page after saving
+    else:
+        form = UserChangeForm(instance=request.user)
+
+    return render(request, 'superuser/superuser_profile.html', {'form': form})
 
 def is_superuser(user):
     return user.is_superuser
