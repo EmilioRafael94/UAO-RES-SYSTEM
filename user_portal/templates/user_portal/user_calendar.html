@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Calendar</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+
+    <!-- FullCalendar 5.11.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+
+    <style>
+        .calendar-container {
+            width: 80%;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        #calendar {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header>
+        <div class="logo">
+            <img src="{% static 'user_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+        </div>
+
+        <div class="right-nav">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+            <a href="{% url 'user_portal:user_myreservation' %}">My Reservations</a>
+            <a href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a>
+            <a href="{% url 'user_portal:user_calendar' %}">View Calendar</a>
+            <a href="{% url 'user_portal:user_profile' %}">Profile</a>
+        </div>
+    </header>
+
+    <!-- Calendar Section -->
+    <div class="calendar-container">
+        <h1>User Calendar</h1>
+        <div id="calendar"></div>
+        <div id="tooltip" class="tooltip"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarEl = document.getElementById('calendar');
+            const tooltip = document.getElementById('tooltip');
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 'auto',
+                events: "{% url 'user_portal:get_reservations' %}",  // Django view returning JSON
+
+                eventColor: '#007BFF',
+                eventDisplay: 'block',
+                eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
+
+                eventMouseEnter: function(info) {
+                    const props = info.event.extendedProps;
+                    const tooltipContent = `
+                        <strong>${info.event.title}</strong><br>
+                        <strong>Date:</strong> ${info.event.start.toLocaleDateString()}<br>
+                        <strong>Time:</strong> ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}<br>
+                        <strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>
+                        <strong>Facilities:</strong> ${props.facilities_needed ? props.facilities_needed : 'None'}<br>
+                        <strong>Manpower:</strong> ${props.manpower_needed ? props.manpower_needed : 0}
+                    `;
+                    tooltip.innerHTML = tooltipContent;
+                    tooltip.style.display = "block";
+                    tooltip.style.left = (info.jsEvent.pageX + 10) + "px";
+                    tooltip.style.top = (info.jsEvent.pageY + 10) + "px";
+                },
+
+                eventMouseLeave: function () {
+                    tooltip.style.display = "none";
+                },
+
+                eventMouseMove: function (info) {
+                    tooltip.style.left = (info.jsEvent.pageX + 15) + "px";
+                    tooltip.style.top = (info.jsEvent.pageY + 15) + "px";
+                },
+
+                eventClick: function (info) {
+                    const p = info.event.extendedProps;
+                    const details = `
+Reservation Details:
+--------------------
+Facility: ${info.event.title}
+Date: ${info.event.start.toLocaleDateString()}
+Time: ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}
+Event Type: ${p.event_type || 'N/A'}
+Facilities Needed: ${p.facilities_needed || 'None'}
+
+Manpower Breakdown:
+- Total Needed: ${p.manpower_needed || 0}
+                    `;
+                    alert(details);
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

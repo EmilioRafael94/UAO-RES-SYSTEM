@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Reservation</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="{% static 'user_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+        </div>
+
+        <div class="right-nav">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+            <a href="{% url 'user_portal:user_myreservation' %}">My Reservations</a>
+            <a href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a>
+            <a href="{% url 'user_portal:user_calendar' %}">View Calendar</a>
+            <a href="{% url 'user_portal:user_profile' %}">Profile</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="edit_reservation-container">
+            <h2>Edit Reservation</h2>
+        
+            <form method="POST">
+                {% csrf_token %}
+                
+               
+                <div class="edit_reservation-form-group">
+                    <label for="facility">Facility:</label>
+                    <input type="text" id="facility" name="facility" value="{{ reservation.facility }}" required>
+                </div>
+        
+            
+                <div class="edit_reservation-form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" name="date" value="{{ reservation.date|date:'Y-m-d' }}" required>
+                </div>
+        
+                
+                <div class="edit_reservation-form-group">
+                    <label for="start_time">Start Time:</label>
+                    <input type="time" id="start_time" name="start_time" value="{{ reservation.start_time|date:'H:i' }}" required>
+                </div>
+        
+                
+                <div class="edit_reservation-form-group">
+                    <label for="end_time">End Time:</label>
+                    <input type="time" id="end_time" name="end_time" value="{{ reservation.end_time|date:'H:i' }}" required>
+                </div>
+        
+               
+                <div class="edit_reservation-actions">
+                    <button type="submit" class="edit_reservation-submit-button">Save Changes</button>
+                    <a href="{% url 'user_portal:user_myreservation' %}" class="edit_reservation-cancel-button">Cancel</a>
+                </div>
+            </form>
+        </div>
+        
+    </main>
+</body>
+</html>

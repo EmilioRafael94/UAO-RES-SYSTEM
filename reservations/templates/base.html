@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+    <!-- Link to the stylesheets here -->
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <h1>Welcome to the Reservation System</h1>
+        
+        {% if user.is_authenticated and request.path != '/accounts/register/' and request.path != '/accounts/login/' %}
+            <p>Welcome back, {{ user.username }}</p>
+        {% endif %}
+        
+        <nav>
+            <ul>
+                {% if user.is_authenticated %}
+                    {% if user.is_superuser %}
+                        <li><a href="{% url 'superuser_portal:superuser_dashboard' %}">Superuser Dashboard</a></li>
+                    {% elif user.is_staff %}
+                        <li><a href="{% url 'admin_portal:admin_dashboard' %}">Admin Dashboard</a></li>
+                    {% else %}
+                        <li><a href="{% url 'user_portal:user_dashboard' %}">User Dashboard</a></li>
+                    {% endif %}
+                {% else %}
+                    <li><a href="{% url 'accounts:login' %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+        <nav>
+            <ul>
+                {% if user.is_authenticated %}
+                    <li>Welcome, {{ user.username }}</li>
+                    <li>
+                        <form action="{% url 'accounts:logout' %}" method="post" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; color: blue; text-decoration: underline; cursor: pointer;">
+                                Logout
+                            </button>
+                        </form>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

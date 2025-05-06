@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>User Dashboard</title>
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+    </head>
+    
+    <body>
+    <header>
+
+        <div class="logo">
+            <img src="{% static 'user_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+          </div>
+
+          <div class="right-nav">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+            <a href="{% url 'user_portal:user_myreservation' %}">My Reservations</a>
+            <a href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a>
+            <a href="{% url 'user_portal:user_calendar' %}">View Calendar</a>
+            <a href="{% url 'user_portal:user_profile' %}">Profile</a>
+        </div>
+    </div>
+    </header>
+    <div class="user-profile-container">
+        <div class="user-profile-welcome-section">
+            <div class="user-profile-welcome-text">WELCOME!</div>
+            <div class="user-profile-user-name">{{ user.username }}</div>
+        </div>
+    
+        <div class="user-profile-details">
+            <div class="user-profile-image">
+                <img src="{% static 'user_portal/profile_icon.png' %}" alt="Profile">
+            </div>
+            <div class="user-profile-info">
+                <div class="user-profile-header">PROFILE</div>
+                <div class="user-profile-field">NAME: {{ user.get_full_name|default:user.username }}</div>
+                <div class="user-profile-field">EMAIL: {{ user.email }}</div>
+                <div class="user-profile-field">COURSE: {{ user.profile.course|default:"Not specified" }}</div>
+                <div class="user-profile-field">PHONE: {{ user.profile.phone|default:"Not specified" }}</div>
+    
+                <button id="user-profile-editProfileBtn" class="user-profile-edit-button">Edit</button>
+            </div>
+        </div>
+    
+        <form action="{% url 'accounts:logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="user-profile-logout-button">LOG-OUT</button>
+        </form>
+    </div>
+    
+    <!-- Edit Profile Modal -->
+    <div id="user-profile-editProfileModal" class="user-profile-modal">
+        <div class="user-profile-modal-content">
+            <div class="user-profile-modal-header">
+                <div class="user-profile-modal-title">Edit Profile</div>
+                <span class="user-profile-close-button">&times;</span>
+            </div>
+            <form method="post" action="{% url 'user_portal:update_profile' %}">
+                {% csrf_token %}
+                <div class="user-profile-form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" value="{{ user.get_full_name|default:user.username }}">
+                </div>
+    
+                <div class="user-profile-form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}">
+                </div>
+    
+                <div class="user-profile-form-group">
+                    <label for="course">Course:</label>
+                    <input type="text" id="course" name="course" value="{{ user.profile.course|default:'' }}">
+                </div>
+    
+                <div class="user-profile-form-group">
+                    <label for="phone">Phone:</label>
+                    <input type="text" id="phone" name="phone" value="{{ user.profile.phone|default:'' }}">
+                </div>
+    
+                <button type="submit" class="user-profile-save-button">Save Changes</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Get modal, button, and close button elements
+        const modal = document.getElementById("user-profile-editProfileModal");
+        const editBtn = document.getElementById("user-profile-editProfileBtn");
+        const closeBtn = document.querySelector(".user-profile-close-button");
+    
+        // When the "Edit Profile" button is clicked, show the modal
+        editBtn.onclick = function () {
+            modal.style.display = "block";
+        }
+    
+        // When the close button (X) is clicked, hide the modal
+        closeBtn.onclick = function () {
+            modal.style.display = "none";
+        }
+    
+        // When clicking outside the modal, close the modal
+        window.onclick = function (event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+    
+
+</body>
+</html>
