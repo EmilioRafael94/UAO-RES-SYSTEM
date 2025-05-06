@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Superuser Dashboard{% endblock %}
+
+{% block content %}
+    <h2>Welcome to the Superuser Dashboard, {{ user.username }}</h2>
+    <p>As a superuser, you have full control over the system.</p>
+
+    <section>
+        <h3>Manage Admins</h3>
+        <ul>
+            {% for admin in admins %}
+                <li>{{ admin.username }} - {{ admin.email }}</li>
+            {% empty %}
+                <p>No admins found.</p>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h3>View All Reservations</h3>
+        <ul>
+            {% for reservation in reservations %}
+                <li>{{ reservation.name }} - {{ reservation.date }}</li>
+            {% empty %}
+                <p>No reservations found.</p>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}
