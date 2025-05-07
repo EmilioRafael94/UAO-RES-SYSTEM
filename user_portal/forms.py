@@ -1,15 +1,61 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Profile
+from user_portal.models import Profile
 
 class UserUpdateForm(forms.ModelForm):
-    # Form for updating user details like username and email
     class Meta:
         model = User
-        fields = ['username', 'email']  # Fields you want to update
+        fields = ['email', 'first_name', 'last_name']
+
+    def __init__(self, *args, **kwargs):
+        super(UserUpdateForm, self).__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs['class'] = 'form-control'
+        self.fields['email'].disabled = True  # <-- THIS makes it non-editable
+
 
 class ProfileUpdateForm(forms.ModelForm):
-    # Form for updating profile details like course, phone, etc.
     class Meta:
         model = Profile
-        fields = ['course', 'phone']  # Add any other fields you have in the Profile model
+        fields = ['phone', 'profile_picture', 'course']
+
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance')
+        super().__init__(*args, **kwargs)
+
+        for name, field in self.fields.items():
+            field.widget.attrs['class'] = 'form-control'
+
+        if instance and instance.role == "Alumni/Guest":
+            self.fields['course'].disabled = True
+        else:
+            self.fields['course'].required = True
+
+class UserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = Profile
+        fields = ['phone', 'course', 'id_type', 'id_upload', 'role', 'profile_picture']
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'course': forms.TextInput(attrs={'class': 'form-control'}),
+            'id_type': forms.Select(attrs={'class': 'form-control'}),
+            'id_upload': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),  # Corrected field name here
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(ProfileForm, self).__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+

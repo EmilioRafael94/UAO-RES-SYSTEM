@@ -9,7 +9,11 @@ body {
 
 /* Container for the form */
 .container {
+<<<<<<< HEAD
     max-width: 600px;
+=======
+    max-width: 800px;
+>>>>>>> 9727abc7ded92f45cf4b563c2e2cca99d4ede459
     margin: 50px auto;
     padding: 30px;
     background-color: #FFFFFF;
@@ -153,7 +157,11 @@ body {
 
 /* Centered login container */
 .container {
+<<<<<<< HEAD
     max-width: 400px;
+=======
+    max-width: 600px;
+>>>>>>> 9727abc7ded92f45cf4b563c2e2cca99d4ede459
     margin: 100px auto;
     padding: 40px;
     background-color: #FFFFFF;
@@ -274,4 +282,117 @@ small {
     }
 }
 
+<<<<<<< HEAD
 /*END OF LOGIN CSS*/
+=======
+/*END OF LOGIN CSS*/
+
+
+/* Custom profile styling FOR BASE.HTML */
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+}
+
+.card h4 {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.card p {
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+.modal-dialog {
+    max-width: 800px;
+}
+
+
+/* user_portal/styles.css */
+
+/* Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container */
+.user-dashboard-content {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+/* Header */
+h1 {
+    font-size: 2.5rem;
+    color: #4e4e4e;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Subheadings */
+h2 {
+    font-size: 1.8rem;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+/* Reservation Summary */
+.user-reservation-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-reservation-summary li {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Notifications */
+.user-notifications {
+    margin-top: 2rem;
+}
+
+.user-notifications ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-notifications li {
+    background-color: #e9ecef;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+}
+
+.user-notifications p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-dashboard-content {
+        padding: 1.5rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+}
+>>>>>>> 9727abc7ded92f45cf4b563c2e2cca99d4ede459

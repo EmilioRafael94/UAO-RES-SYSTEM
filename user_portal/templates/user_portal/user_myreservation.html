@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+</head>
+<body>
+
+
+    <main class="user-myreservations-main">
+        <h2>My Reservations</h2>
+    
+        {% if reservations %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Representative</th>
+                        <th>Date Reserved</th>
+                        <th>Date Actual Use</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Facility Use</th>
+                        <th>Facilities Needed</th>
+                        <th>Manpower Needed</th>
+                        <th>Event Type</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td>{{ reservation.organization }}</td>
+                        <td>{{ reservation.representative }}</td>
+                        <td>{{ reservation.date_reserved|date:"F j, Y" }}</td>
+                        <td>{{ reservation.date|date:"F j, Y" }}</td>
+                        <td>{{ reservation.start_time|time:"h:i A"|default:"--:--" }}</td>
+                        <td>{{ reservation.end_time|time:"h:i A"|default:"--:--" }}</td>
+                        <td>{{ reservation.facility_use|default:"None" }}</td>
+                        <td>
+                            {% if reservation.facilities_needed %}
+                                <ul>
+                                    {% for facility, quantity in reservation.facilities_needed.items %}
+                                        <li>{{ facility }}: {{ quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p>No facilities needed</p>
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            {% if reservation.manpower_needed %}
+                                <ul>
+                                    {% for manpower, quantity in reservation.manpower_needed.items %}
+                                        <li>{{ manpower }}: {{ quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p>No manpower needed</p>
+                            {% endif %}
+                        </td>
+                        <td>{{ reservation.event_type|default:"N/A" }}</td>
+                        <td>{{ reservation.status|default:"Pending" }}</td>
+                        <td>
+                            <a href="{% url 'user_portal:edit_reservation' reservation.id %}" class="btn btn-edit">Edit</a>
+                            <form action="{% url 'user_portal:delete_reservation' reservation.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-delete">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No reservations found.</p>
+        {% endif %}
+    
+        <div class="actions">
+            <a href="{% url 'user_portal:user_makereservation' %}" class="btn-primary">Make a Reservation</a>
+        </div>
+    </main>
+    
+</body>
+</html>
+{% endblock %}

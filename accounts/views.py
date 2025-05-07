@@ -7,20 +7,60 @@ from django.contrib.auth import logout
 from .models import UserProfile 
 from .forms import CustomUserCreationForm
 from django.contrib.auth.models import User
+from user_portal.models import Profile
 
 
-# User registration view
 def register(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, f"Welcome {user.username}!")
-            return redirect('role_redirect')  # Redirect to role-based view
+            username = form.cleaned_data.get('username')
+            email = form.cleaned_data.get('email')
+
+            # Check for duplicate username or email
+            if User.objects.filter(username=username).exists():
+                form.add_error('username', "Username is already taken.")
+            elif User.objects.filter(email=email).exists():
+                form.add_error('email', "Email is already registered.")
+            else:
+                try:
+                    # Create user without saving immediately
+                    user = form.save(commit=False)
+                    user.set_password(form.cleaned_data['password1'])
+
+                    full_name = request.POST.get('full_name', '').strip()
+                    if not full_name:
+                        form.add_error(None, "Full name is required.")
+                        raise ValueError("Full name is missing.")
+
+                    name_parts = full_name.split(' ', 1)
+                    user.first_name = name_parts[0]
+                    user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+                    user.save()
+
+                    role = form.cleaned_data['role']
+                    phone = form.cleaned_data['phone']
+                    course = form.cleaned_data['course'] if role == 'Student of XU' else ''
+
+                    Profile.objects.create(
+                        user=user,
+                        phone=phone,
+                        role=role,
+                        course=course
+                    )
+
+                    messages.success(request, "Registration successful! Please log in.")
+                    return redirect('accounts:login')
+
+                except IntegrityError:
+                    form.add_error(None, "An unexpected error occurred. Please try again.")
+                except Exception as e:
+                    form.add_error(None, str(e))
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
+
     return render(request, 'register.html', {'form': form})
+
 
 # Role-based redirect view
 @login_required
