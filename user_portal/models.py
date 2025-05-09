@@ -41,6 +41,15 @@ class Reservation(models.Model):
     manpower_needed = models.JSONField(blank=True, null=True)
     status = models.CharField(max_length=50, default='Pending')
     facility_use = models.CharField(max_length=100, default='General Use')
+    billing_file = models.FileField(upload_to='billing/', null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+
+    receipt_file = models.FileField(upload_to='receipts/', null=True, blank=True)
+
+    def is_receipt_uploaded(self):
+        return bool(self.receipt_file)
+    
 
     class Meta:
         unique_together = ('facility', 'date', 'start_time', 'end_time')

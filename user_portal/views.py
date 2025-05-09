@@ -32,6 +32,7 @@ def user_myreservation(request):
     return render(request, 'user_portal/user_myreservation.html', {'reservations': reservations})
 
 
+
 @login_required
 def user_makereservation(request):
     today = timezone.now().date()
@@ -285,3 +286,14 @@ def update_reservation_status(request, reservation_id, status):
 
     return redirect('user_portal:user_myreservation')
 
+@login_required
+def upload_receipt(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+
+    if request.method == 'POST' and request.FILES.get('receipt_file'):
+        receipt = request.FILES['receipt_file']
+        reservation.receipt_file = receipt
+        reservation.save()
+        messages.success(request, "Receipt uploaded successfully.")
+
+    return redirect('user_portal:user_myreservation')

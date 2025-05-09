@@ -15,5 +15,8 @@ urlpatterns = [
     path('delete/<int:id>/', views.delete_reservation, name='delete_reservation'),
     path('get-reservations/', views.get_reservations, name='get_reservations'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('upload-receipt/<int:reservation_id>/', views.upload_receipt, name='upload_receipt'),
+
+    
     
 ]
