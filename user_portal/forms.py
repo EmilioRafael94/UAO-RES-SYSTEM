@@ -14,6 +14,7 @@ class UserUpdateForm(forms.ModelForm):
         self.fields['email'].disabled = True  # <-- THIS makes it non-editable
 
 
+
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
@@ -26,6 +27,9 @@ class ProfileUpdateForm(forms.ModelForm):
         for name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
 
+        if 'profile_picture' in self.fields:
+         self.fields['profile_picture'].required = False
+        
         if instance and instance.role == "Alumni/Guest":
             self.fields['course'].disabled = True
         else:

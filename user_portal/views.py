@@ -167,6 +167,16 @@ def user_dashboard(request):
 def user_profile(request):
     return render(request, 'user_portal/user_profile.html')
 
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth import update_session_auth_hash
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .forms import UserUpdateForm, ProfileUpdateForm
+
+import base64
+from django.core.files.base import ContentFile
+
 @login_required
 def update_profile(request):
     if request.method == 'POST':
@@ -174,17 +184,55 @@ def update_profile(request):
         profile = request.user.profile
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
 
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
 
+        valid_forms = user_form.is_valid() and profile_form.is_valid()
+        changing_password = current_password or new_password or confirm_password
+
+        if changing_password:
+            if not (current_password and new_password and confirm_password):
+                messages.error(request, 'All password fields are required to change your password.')
+                valid_forms = False
+            elif not check_password(current_password, request.user.password):
+                messages.error(request, 'Current password is incorrect.')
+                valid_forms = False
+            elif new_password != confirm_password:
+                messages.error(request, 'New password and confirmation do not match.')
+                valid_forms = False
+            elif check_password(new_password, request.user.password):
+                messages.error(request, 'New password must be different from your current password.')
+                valid_forms = False
+
+        if valid_forms:
+            user_form.save()
             profile_instance = profile_form.save(commit=False)
 
+            # Handle cropped image from base64
+            cropped_image_data = request.POST.get('cropped_image')
+            if cropped_image_data:
+                format, imgstr = cropped_image_data.split(';base64,') 
+                ext = format.split('/')[-1] 
+                profile_instance.profile_picture.save(
+                    f'profile_{request.user.username}.{ext}',
+                    ContentFile(base64.b64decode(imgstr)),
+                    save=False
+                )
+
             if profile.role != "Student of XU":
-                profile_instance.course = profile.course  # keep existing course (if any)
+                profile_instance.course = profile.course
 
             profile_instance.save()
 
-            messages.success(request, 'Your profile has been updated successfully!')
+            if changing_password:
+                request.user.set_password(new_password)
+                request.user.save()
+                update_session_auth_hash(request, request.user)
+                messages.success(request, 'Your profile and password have been updated successfully!')
+            else:
+                messages.success(request, 'Your profile has been updated successfully!')
+
             return redirect('user_portal:user_profile')
     else:
         user_form = UserUpdateForm(instance=request.user)
@@ -194,7 +242,9 @@ def update_profile(request):
         'user_form': user_form,
         'profile_form': profile_form
     }
-    return render(request, 'user_profile.html', context)
+    return render(request, 'user_portal/user_profile.html', context)
+
+
 
 @login_required
 def get_reservations(request):
