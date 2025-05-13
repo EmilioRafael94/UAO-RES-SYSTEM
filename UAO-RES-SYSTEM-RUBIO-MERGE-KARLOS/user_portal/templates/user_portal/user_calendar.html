@@ -84,6 +84,7 @@
                     <strong>Time:</strong> ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}<br>
                     <strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>
                     <strong>Reserved By:</strong> ${props.user_name || 'Unknown'}
+                    <strong>Organization:</strong> ${props.organization || 'Unknown'}
                 `;
                 tooltip.innerHTML = tooltipContent;
                 tooltip.style.display = "block";
@@ -110,6 +111,7 @@ Date: ${info.event.start.toLocaleDateString()}
 Time: ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}
 Event Type: ${p.event_type || 'N/A'}
 Reserved By: ${p.user_name || 'Unknown'}
+Organization: ${p.organization || 'Unknown'}
                 `;
                 alert(details);
             }

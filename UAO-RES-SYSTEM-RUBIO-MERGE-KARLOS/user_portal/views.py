@@ -255,6 +255,7 @@ def get_reservations(request):
             'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
             'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
             'user_name': r.representative or 'Unknown',  # Add representative (or user_name)
+            'organization': r.organization or 'Unknown',
         })
 
     return JsonResponse(events, safe=False)
