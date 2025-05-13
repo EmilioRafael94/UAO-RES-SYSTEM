@@ -1,0 +1,136 @@
+{% extends 'superuser/base_superuser.html' %}
+
+{% block title %}Superuser Profile{% endblock %}
+
+{% block content %}
+    <div class="profile-container">
+        <div class="profile-section">
+            <h2>Profile Information</h2>
+            <div class="profile-info">
+                <div class="info-item">
+                    <label>Username:</label>
+                    <span>{{ user.username }}</span>
+                </div>
+                <div class="info-item">
+                    <label>Email:</label>
+                    <span>{{ user.email }}</span>
+                </div>
+                <div class="info-item">
+                    <label>First Name:</label>
+                    <span>{{ user.first_name }}</span>
+                </div>
+                <div class="info-item">
+                    <label>Last Name:</label>
+                    <span>{{ user.last_name }}</span>
+                </div>
+                <div class="info-item">
+                    <label>Role:</label>
+                    <span>Superuser</span>
+                </div>
+            </div>
+
+                <div class="profile-actions">
+    <button onclick="showEditProfileModal()" class="edit-btn">Edit Profile</button>
+    <button onclick="showChangePasswordModal()" class="change-password-btn">Change Password</button>
+    <form method="POST" action="{% url 'superuser_portal:logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn">Logout</button>
+    </form>
+</div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block modal %}
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Profile</h2>
+            <form method="POST" id="profileForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name:</label>
+                    <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" required>
+                </div>
+                <button type="submit" class="save-btn">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Change Password</h2>
+            <form method="POST" id="passwordForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="current_password">Current Password:</label>
+                    <input type="password" id="current_password" name="current_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_password">New Password:</label>
+                    <input type="password" id="new_password" name="new_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password:</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+                <button type="submit" class="save-btn">Change Password</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Modal Management
+    function showModal(modalId) {
+        document.getElementById(modalId).style.display = 'block';
+    }
+
+    function showEditProfileModal() {
+        showModal('editProfileModal');
+    }
+
+    function showChangePasswordModal() {
+        showModal('changePasswordModal');
+    }
+
+    // Modal Close Buttons
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.onclick = function() {
+            this.closest('.modal').style.display = 'none';
+        }
+    });
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    }
+
+    // Form validation for password change
+    document.getElementById('passwordForm').onsubmit = function(e) {
+        const newPass = document.getElementById('new_password').value;
+        const confirmPass = document.getElementById('confirm_password').value;
+        
+        if (newPass !== confirmPass) {
+            e.preventDefault();
+            alert('New password and confirmation do not match!');
+            return false;
+        }
+        return true;
+    };
+</script>
+{% endblock %}

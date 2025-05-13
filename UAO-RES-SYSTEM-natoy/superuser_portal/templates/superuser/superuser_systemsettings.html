@@ -1,0 +1,93 @@
+{% extends 'superuser/base_superuser.html' %}
+
+{% block title %}System Settings{% endblock %}
+
+{% block content %}
+{% load static %}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<div class="calendar-container" style="margin: 30px;">
+    <h2>Blocked Dates & Reservations Calendar</h2>
+    <div id="calendar"></div>
+</div>
+
+<!-- Modal for adding block reason -->
+<div id="blockModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:white; padding:20px; border:1px solid #ccc; z-index:2000;">
+    <h3>Block Date</h3>
+    <form id="blockForm">
+        <input type="hidden" id="blockDate" name="date">
+        <label for="reason">Reason:</label><br>
+        <textarea id="reason" name="reason" rows="4" style="width:100%" required></textarea><br><br>
+        <button type="submit">Block</button>
+        <button type="button" onclick="closeModal()">Cancel</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        selectable: true,
+        dateClick: function(info) {
+            document.getElementById('blockDate').value = info.dateStr;
+            document.getElementById('blockModal').style.display = 'block';
+        },
+        // Fetch blocked dates and reservations from the server
+        events: function(info, successCallback, failureCallback) {
+            $.ajax({
+                url: "{% url 'superuser_portal:get_blocked_dates' %}",
+                success: function(data) {
+                    const events = data.map(event => ({
+                        title: event.title,
+                        start: event.start,
+                        end: event.end,
+                        backgroundColor: event.backgroundColor || '#dc3545'  // Blocked dates with default color
+                    }));
+                    successCallback(events);
+                },
+                error: function(err) {
+                    failureCallback(err);
+                }
+            });
+        },
+        eventColor: '#dc3545',
+        eventDisplay: 'block',
+    });
+
+    calendar.render();
+
+    // Handle form submission for blocking dates
+    document.getElementById('blockForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        $.ajax({
+            type: 'POST',
+            url: '{% url "superuser_portal:add_blocked_date" %}',
+            data: {
+                'date': $('#blockDate').val(),
+                'reason': $('#reason').val(),
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function() {
+                calendar.refetchEvents();
+                closeModal();
+            },
+            error: function(err) {
+                alert("Error blocking date.");
+            }
+        });
+    });
+});
+
+function closeModal() {
+    document.getElementById('blockModal').style.display = 'none';
+}
+</script>
+
+{% endblock %}

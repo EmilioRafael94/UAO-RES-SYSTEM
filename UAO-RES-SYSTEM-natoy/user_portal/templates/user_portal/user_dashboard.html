@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+    <div class="user-dashboard-content">
+        <h1>Welcome to Your Dashboard, {{ user.username }}!</h1>
+
+        <div class="user-reservation-summary">
+            <h2>Your Reservations</h2>
+            <ul>
+                <li>Total Reservations: {{ total_reservations }}</li>
+                <li>Approved: {{ approved }}</li>
+                <li>Rejected: {{ rejected }}</li>
+            </ul>
+        </div>
+
+        <div class="user-notifications">
+            <h2>Notifications</h2>
+            {% if notifications %}
+                <ul>
+                    {% for notification in notifications %}
+                        <li>{{ notification.message }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No new notifications.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

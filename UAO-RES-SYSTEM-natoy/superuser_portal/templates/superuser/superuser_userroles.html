@@ -1,0 +1,180 @@
+{% extends 'superuser/base_superuser.html' %}
+
+{% block title %}Users & Roles{% endblock %}
+
+{% block content %}
+    <div class="users-container">
+        <!-- Search and Filter Section -->
+        <div class="search-filter-section">
+            <div class="search-box">
+                <input type="text" id="userSearch" placeholder="Search users..." oninput="filterUsers()">
+            </div>
+            <div class="filter-box">
+                <select id="roleFilter" onchange="filterUsers()">
+                    <option value="all">All Roles</option>
+                    <option value="superuser">Superuser</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="users-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Current Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr data-username="{{ user.username }}" data-role="{% if user.is_superuser %}superuser{% elif user.is_staff %}admin{% else %}user{% endif %}">
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.get_full_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.is_superuser %}
+                                Superuser
+                            {% elif user.is_staff %}
+                                Admin
+                            {% else %}
+                                User
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            <button onclick="showRoleModal('{{ user.id }}')" class="edit-role-btn">Change Role</button>
+                            <button onclick="resetPassword('{{ user.id }}')" class="reset-btn">Reset Password</button>
+                            {% if user.is_active %}
+                                <button onclick="deactivateUser('{{ user.id }}')" class="deactivate-btn">Deactivate</button>
+                            {% else %}
+                                <button onclick="activateUser('{{ user.id }}')" class="activate-btn">Activate</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block modal %}
+    <!-- Change Role Modal -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Change User Role</h2>
+            <form id="roleForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="newRole">Select New Role:</label>
+                    <select id="newRole" name="role" required>
+                        <option value="superuser">Superuser</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                    </select>
+                </div>
+                <button type="submit" class="save-btn">Save Changes</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Search and Filter Functionality
+    function filterUsers() {
+        const searchText = document.getElementById('userSearch').value.toLowerCase();
+        const roleFilter = document.getElementById('roleFilter').value;
+        const rows = document.querySelectorAll('.users-table tbody tr');
+
+        rows.forEach(row => {
+            const username = row.getAttribute('data-username').toLowerCase();
+            const role = row.getAttribute('data-role');
+            const showBySearch = username.includes(searchText);
+            const showByRole = roleFilter === 'all' || role === roleFilter;
+            
+            row.style.display = (showBySearch && showByRole) ? '' : 'none';
+        });
+    }
+
+    // Role Management
+    function showRoleModal(userId) {
+        const modal = document.getElementById('roleModal');
+        const form = document.getElementById('roleForm');
+        form.action = `/superuser_portal/user/${userId}/change-role/`;
+        modal.style.display = 'block';
+    }
+
+    // Password Reset
+    function resetPassword(userId) {
+        if (confirm('Are you sure you want to reset this user\'s password?')) {
+            fetch(`/superuser_portal/user/${userId}/reset-password/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Password has been reset.\nNew password: ${data.new_password}\n\nPlease provide this password to the user securely.`);
+                } else {
+                    alert('Failed to reset password.');
+                }
+            });
+        }
+    }
+
+    // User Activation/Deactivation
+    function deactivateUser(userId) {
+        if (confirm('Are you sure you want to deactivate this user?')) {
+            updateUserStatus(userId, false);
+        }
+    }
+
+    function activateUser(userId) {
+        if (confirm('Are you sure you want to activate this user?')) {
+            updateUserStatus(userId, true);
+        }
+    }
+
+    function updateUserStatus(userId, active) {
+        fetch(`/superuser_portal/user/${userId}/update-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify({ active: active })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to update user status.');
+            }
+        });
+    }
+
+    // Modal Close Button
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.onclick = function() {
+            this.closest('.modal').style.display = 'none';
+        }
+    });
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}
+

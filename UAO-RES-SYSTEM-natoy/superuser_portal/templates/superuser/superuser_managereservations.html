@@ -1,0 +1,225 @@
+{% extends 'superuser/base_superuser.html' %}
+
+{% block title %}Manage Reservations{% endblock %}
+
+{% block content %}
+    <div class="reservations-container">
+        <!-- Filter Section -->
+        <div class="filter-bar">
+            <select id="statusFilter" onchange="applyFilter(this.value)">
+                <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Reservations</option>
+                <option value="needs_billing" {% if current_filter == 'needs_billing' %}selected{% endif %}>Needs Billing</option>
+                <option value="needs_payment" {% if current_filter == 'needs_payment' %}selected{% endif %}>Needs Receipt Verification</option>
+                <option value="needs_pass" {% if current_filter == 'needs_pass' %}selected{% endif %}>Needs Pass Review</option>
+            </select>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search reservations..." oninput="searchReservations()">
+            </div>
+        </div>
+
+        <!-- Reservations Table -->
+        <div class="reservations-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reference #</th>
+                        <th>Facility</th>
+                        <th>Event Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reservationsBody">
+                    {% for res in reservations %}
+                    <tr>
+                        <td>{{ res.reference }}</td>
+                        <td>{{ res.facility }}</td>
+                        <td>{{ res.date|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="status-badge status-{{ res.status|slugify }}">
+                                {{ res.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <button onclick="viewReservationDetails('{{ res.id }}')" class="view-btn">Go</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="no-data">No reservations found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block modal %}
+    <!-- Reservation Details Modal -->
+    <div id="reservationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2>Reservation Details</h2>
+            </div>
+            <div class="modal-body">
+                <div class="steps-container">
+                    <!-- Billing Section -->
+                    <div class="step-section">
+                        <h3>Step 1: Billing</h3>
+                        <div id="billingDetails">
+                            Loading...
+                        </div>
+                    </div>
+
+                    <!-- Payment Section -->
+                    <div class="step-section">
+                        <h3>Step 2: Payment Verification</h3>
+                        <div id="paymentDetails">
+                            Loading...
+                        </div>
+                    </div>
+
+                    <!-- Security Pass Section -->
+                    <div class="step-section">
+                        <h3>Step 3: Security Pass</h3>
+                        <div id="passDetails">
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filter functionality
+    function applyFilter(filterValue) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('filter', filterValue);
+        window.location.href = currentUrl.toString();
+    }
+
+    // Search functionality
+    function searchReservations() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#reservationsBody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+    }
+
+    // Modal functionality
+    const modal = document.getElementById('reservationModal');
+    const closeBtn = document.querySelector('.modal-content .close');
+
+    function viewReservationDetails(reservationId) {
+        modal.style.display = 'block';
+        
+        // Load reservation details via Ajax
+        fetch(`/superuser_portal/reservation/${reservationId}/details/`)
+            .then(response => response.json())
+            .then(data => {
+                updateBillingSection(data.billing);
+                updatePaymentSection(data.payment);
+                updatePassSection(data.pass);
+            });
+    }
+
+    function updateBillingSection(billing) {
+        const billingHtml = billing.statement_url ? 
+            `<div class="file-section">
+                <a href="${billing.statement_url}" class="file-link" target="_blank">
+                    View Billing Statement
+                </a>
+            </div>` :
+            `<div class="upload-section">
+                <form onsubmit="uploadBilling(event)">
+                    <input type="file" required>
+                    <button type="submit">Upload Billing Statement</button>
+                </form>
+            </div>`;
+        
+        document.getElementById('billingDetails').innerHTML = billingHtml;
+    }
+
+    function updatePaymentSection(payment) {
+        const paymentHtml = payment.receipt_url ?
+            `<div class="file-section">
+                <a href="${payment.receipt_url}" class="file-link" target="_blank">
+                    View Payment Receipt
+                </a>
+                <button onclick="verifyPayment(${payment.id})" class="verify-btn">
+                    Verify Payment
+                </button>
+            </div>` :
+            `<div class="pending-section">
+                Waiting for payment receipt...
+            </div>`;
+        
+        document.getElementById('paymentDetails').innerHTML = paymentHtml;
+    }
+
+    function updatePassSection(pass) {
+        const passHtml = pass.file_url ?
+            `<div class="file-section">
+                <a href="${pass.file_url}" class="file-link" target="_blank">
+                    View Security Pass
+                </a>
+                <button onclick="verifyPass(${pass.id})" class="verify-btn">
+                    Verify Pass
+                </button>
+            </div>` :
+            `<div class="pending-section">
+                Waiting for security pass...
+            </div>`;
+        
+        document.getElementById('passDetails').innerHTML = passHtml;
+    }
+
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // CSRF Token handling for Ajax requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Add CSRF token to all fetch requests
+    function fetchWithToken(url, options = {}) {
+        const csrfToken = getCookie('csrftoken');
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...options.headers,
+                'X-CSRFToken': csrfToken,
+            },
+        });
+    }
+</script>
+{% endblock %}
+

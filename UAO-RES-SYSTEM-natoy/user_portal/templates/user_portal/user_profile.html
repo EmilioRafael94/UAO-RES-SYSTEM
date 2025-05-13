@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+{% if messages %}
+  <div class="d-flex justify-content-center mb-3 w-100">
+    <div style="width: 100%;">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} text-center">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+
+<div class="container mt-5">
+  <h2 class="text-center mb-4">User Profile</h2>
+  <div class="card shadow rounded p-4">
+    <div class="row">
+      <div class="col-md-4 text-center">
+        {% if request.user.profile.profile_picture %}
+          <div class="profile-picture-wrapper mx-auto">
+            <img src="{{ request.user.profile.profile_picture.url }}" class="profile-picture" alt="Profile Picture">
+          </div>
+        {% else %}
+          <img src="{% static 'default_profile.png' %}" class="img-fluid rounded-circle" alt="Default Profile" width="200">
+        {% endif %}
+        <h4 class="mt-3">{{ request.user.get_full_name }}</h4>
+        <p class="text-muted">{{ request.user.profile.role }}</p>
+      </div>
+
+      <div class="col-md-8">
+        <h5>Account Details</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item"><strong>Username:</strong> {{ request.user.username }}</li>
+          <li class="list-group-item"><strong>Email:</strong> {{ request.user.email }}</li>
+          <li class="list-group-item"><strong>Phone:</strong> {{ request.user.profile.phone }}</li>
+          {% if request.user.profile.role == "Student of XU" %}
+            <li class="list-group-item"><strong>Course:</strong> {{ request.user.profile.course }}</li>
+          {% endif %}
+        </ul>
+
+        <button class="btn btn-primary mt-4" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+
+        <form action="{% url 'user_portal:logout' %}" method="POST" class="mt-4">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" enctype="multipart/form-data" action="{% url 'user_portal:update_profile' %}" id="editProfileForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="email" class="form-label">Email</label>
+              {{ user_form.email }}
+            </div>
+
+            <div class="col-md-6">
+              <label for="phone" class="form-label">Phone</label>
+              {{ profile_form.phone }}
+            </div>
+
+            <div class="col-md-6">
+              <label for="first_name" class="form-label">First Name</label>
+              {{ user_form.first_name }}
+            </div>
+
+            <div class="col-md-6">
+              <label for="last_name" class="form-label">Last Name</label>
+              {{ user_form.last_name }}
+            </div>
+
+            {% if request.user.profile.role == "Student of XU" %}
+            <div class="col-md-12">
+              <label for="course" class="form-label">Course</label>
+              {{ profile_form.course }}
+            </div>
+            {% endif %}
+
+            <div class="col-md-12">
+              <label for="profile_picture" class="form-label">Profile Picture</label>
+              <input type="file" id="profilePicInput" accept="image/*" class="form-control" name="profile_picture">
+
+              <div class="mt-3">
+                <img id="imagePreview" style="max-width: 100%; display: none;" />
+              </div>
+
+              {% if request.user.profile.profile_picture %}
+                <img src="{{ request.user.profile.profile_picture.url }}" alt="Current Profile Picture" class="img-fluid mt-2" width="100">
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Change Password Toggle -->
+          <button class="btn btn-outline-secondary mt-3 text-black" type="button" id="togglePasswordFields">
+            Change Password
+          </button>
+
+          <!-- Hidden Password Fields -->
+          <div id="passwordFields" class="mt-3" style="display: none;">
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label for="current_password" class="form-label" style="color: black;">Current Password</label>
+                <input type="password" name="current_password" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label for="new_password" class="form-label" style="color: black;">New Password</label>
+                <input type="password" name="new_password" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label for="confirm_password" class="form-label" style="color: black;">Confirm New Password</label>
+                <input type="password" name="confirm_password" class="form-control">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+  const toggleBtn = document.getElementById('togglePasswordFields');
+  const passwordFields = document.getElementById('passwordFields');
+
+  toggleBtn.addEventListener('click', function () {
+    if (passwordFields.style.display === 'none') {
+      passwordFields.style.display = 'block';
+      toggleBtn.textContent = 'Cancel Password Change';
+    } else {
+      passwordFields.style.display = 'none';
+      toggleBtn.textContent = 'Change Password';
+    }
+  });
+
+  let cropper;
+  const profilePicInput = document.getElementById('profilePicInput');
+  const imagePreview = document.getElementById('imagePreview');
+  const form = document.getElementById('editProfileForm');
+
+  profilePicInput.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        imagePreview.src = event.target.result;
+        imagePreview.style.display = 'block';
+
+        if (cropper) {
+          cropper.destroy();
+        }
+
+        cropper = new Cropper(imagePreview, {
+          aspectRatio: 1,
+          viewMode: 1,
+          movable: true,
+          cropBoxResizable: true,
+          minContainerWidth: 300,
+          minContainerHeight: 300,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    if (cropper && profilePicInput.files.length > 0) {
+      e.preventDefault();
+
+    cropper.getCroppedCanvas({
+  width: 300,
+  height: 300,
+  fillColor: '#fff'  // Force white background behind transparent areas
+}).toBlob(function (blob) {
+  const file = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  profilePicInput.files = dataTransfer.files;
+
+  form.submit();
+}, 'image/jpeg');
+    }
+  });
+</script>
+
+{% endblock %}
