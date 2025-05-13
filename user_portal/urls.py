@@ -18,11 +18,8 @@ urlpatterns = [
     path('upload-receipt/<int:reservation_id>/', views.upload_receipt, name='upload_receipt'),
     path('reservations/', views.my_reservations, name='my_reservations'),
     path('upload-completed-form/<int:reservation_id>/', views.upload_completed_form, name='upload_completed_form'),
-
-  
-
+    path('reservation/<int:reservation_id>/', views.view_reservation_details, name='view_reservation_details'),
 
 
-    
-    
+
 ]

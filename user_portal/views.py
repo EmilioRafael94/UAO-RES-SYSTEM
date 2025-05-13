@@ -373,7 +373,7 @@ def my_reservations(request):
     """View all user reservations"""
     reservations = Reservation.objects.filter(user=request.user).order_by('-date')
     
-    return render(request, 'user_portal/my_reservations.html', {
+    return render(request, 'user_portal/user_myreservation.html', {
         'reservations': reservations
     })
 
@@ -415,7 +415,9 @@ def upload_receipt(request, reservation_id):
         else:
             messages.error(request, "No file was uploaded. Please try again.")
     
-    return redirect('user_portal:view_reservation_details', reservation_id=reservation_id)
+    return redirect('user_portal:user_myreservation')
+
+
 
 @login_required
 def upload_completed_form(request, reservation_id):
