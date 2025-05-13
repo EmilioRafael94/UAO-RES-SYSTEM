@@ -14,43 +14,40 @@ def is_admin(user):
 @login_required
 @user_passes_test(is_admin)
 def admin_dashboard(request):
-    # Debug: Print all reservations
-    print("\n=== All Reservations ===")
+    current_admin = request.user.username
     all_reservations = Reservation.objects.all()
-    for res in all_reservations:
-        print(f"ID: {res.id}, User: {res.user.username}, Status: {res.status}, Date: {res.date}")
-    print("=======================\n")
 
-    # Fetch pending and approved reservations
-    pending_reservations = Reservation.objects.filter(status='Pending').order_by('-date', '-created_at')
-    approved_reservations = Reservation.objects.filter(status='Approved').order_by('-date', '-created_at')[:10]
+    # Pending: status is Pending and current admin has NOT approved or rejected
+    pending_reservations = [
+        res for res in Reservation.objects.filter(status='Pending').order_by('-date', '-created_at')
+        if current_admin not in (res.admin_approvals or {}) and current_admin not in (res.admin_rejections or {})
+    ]
 
-    # Debug: Print filtered reservations
-    print("\n=== Pending Reservations ===")
-    for res in pending_reservations:
-        print(f"ID: {res.id}, User: {res.user.username}, Date: {res.date}")
-    print("===========================\n")
+    # Recently Approved: current admin is in admin_approvals
+    approved_reservations = [
+        res for res in Reservation.objects.all().order_by('-date', '-created_at')
+        if current_admin in (res.admin_approvals or {})
+    ][:10]
 
-    print("\n=== Approved Reservations ===")
-    for res in approved_reservations:
-        print(f"ID: {res.id}, User: {res.user.username}, Date: {res.date}")
-    print("============================\n")
+    # Recently Rejected: any reservation with status 'Rejected'
+    rejected_reservations = [
+        res for res in Reservation.objects.filter(status='Rejected').order_by('-date', '-created_at')
+    ][:10]
 
-    # Handle selected reservation if it exists, otherwise default to the first pending reservation
     selected_reservation_id = request.GET.get('id')
     selected_reservation = None
     if selected_reservation_id:
         selected_reservation = Reservation.objects.filter(id=selected_reservation_id).first()
-    if not selected_reservation and pending_reservations.exists():
-        selected_reservation = pending_reservations.first()
+    if not selected_reservation and pending_reservations:
+        selected_reservation = pending_reservations[0] if pending_reservations else None
 
     context = {
         'pending': pending_reservations,
         'approved': approved_reservations,
+        'rejected': rejected_reservations,
         'selected_reservation': selected_reservation,
-        'pending_count': pending_reservations.count(),
+        'pending_count': len(pending_reservations),
     }
-    
     return render(request, 'admin_portal/admin_dashboard.html', context)
 
 # Approve Reservation View
@@ -60,9 +57,20 @@ def approve_reservation(request, reservation_id):
     if request.method == 'POST':
         reservation = get_object_or_404(Reservation, id=reservation_id)
         admin_notes = request.POST.get('admin_notes', '').strip()
-        
-        # Update reservation status
-        reservation.status = 'Approved'
+        admin_username = request.user.username
+
+        # Add or update this admin's approval
+        approvals = reservation.admin_approvals or {}
+        approvals[admin_username] = admin_notes
+        reservation.admin_approvals = approvals
+
+        # If 4 unique admins have approved, set status to Approved
+        if len(approvals) >= 4:
+            reservation.status = 'Approved'
+        else:
+            reservation.status = 'Pending'
+
+        # Optionally store the latest admin notes
         if admin_notes:
             reservation.admin_notes = admin_notes
         reservation.save()
@@ -70,11 +78,11 @@ def approve_reservation(request, reservation_id):
         # Create notification for the user
         Notification.objects.create(
             user=reservation.user,
-            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been approved. {admin_notes if admin_notes else ''}",
+            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been approved by {admin_username}. {admin_notes if admin_notes else ''}",
             notification_type='reservation_approved'
         )
         
-        messages.success(request, f"Reservation for {reservation.facility_use} approved.")
+        messages.success(request, f"Reservation for {reservation.facility_use} approved by {admin_username}.")
     return redirect('admin_portal:admin_dashboard')
 
 # Reject Reservation View
@@ -84,21 +92,26 @@ def reject_reservation(request, reservation_id):
     if request.method == 'POST':
         reservation = get_object_or_404(Reservation, id=reservation_id)
         rejection_reason = request.POST.get('rejection_reason', '').strip()
-        
-        # Update reservation status
+        admin_username = request.user.username
+
+        # Add or update this admin's rejection
+        rejections = reservation.admin_rejections or {}
+        rejections[admin_username] = rejection_reason
+        reservation.admin_rejections = rejections
+
+        # Set status to Rejected if any admin rejects
         reservation.status = 'Rejected'
-        if rejection_reason:
-            reservation.rejection_reason = rejection_reason
+        reservation.rejection_reason = rejection_reason
         reservation.save()
 
         # Create notification for the user
         Notification.objects.create(
             user=reservation.user,
-            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been rejected. Reason: {rejection_reason if rejection_reason else 'No reason provided'}",
+            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been rejected by {admin_username}. Reason: {rejection_reason if rejection_reason else 'No reason provided'}",
             notification_type='reservation_rejected'
         )
         
-        messages.success(request, f"Reservation for {reservation.facility_use} rejected.")
+        messages.success(request, f"Reservation for {reservation.facility_use} rejected by {admin_username}.")
     return redirect('admin_portal:admin_dashboard')
 
 # Admin Calendar View

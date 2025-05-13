@@ -68,6 +68,21 @@
                 {% endfor %}
             </ul>
         </div>
+
+        <div class="section">
+            <h3>Recently Rejected</h3>
+            <ul>
+                {% for reservation in rejected %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No rejected reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
 
     <!-- Main Content -->
@@ -76,15 +91,21 @@
         <div class="reservation-card">
             <h2>Reservation Details</h2>
             <p><strong>User:</strong> {{ selected_reservation.user.username }}</p>
-            <p><strong>Organization:</strong> {{ selected_reservation.organization }}</p>
-            <p><strong>Representative:</strong> {{ selected_reservation.representative }}</p>
-            <p><strong>Contact:</strong> {{ selected_reservation.contact_number }}</p>
+            <p><strong>Organization:</strong> {{ selected_reservation.organization|default:"N/A" }}</p>
+            <p><strong>Representative:</strong> {{ selected_reservation.representative|default:"N/A" }}</p>
+            <p><strong>Contact:</strong> {{ selected_reservation.contact_number|default:"N/A" }}</p>
             <div class="card-content">
-                <p><strong>Facility:</strong> {{ selected_reservation.facility }}</p>
-                <p><strong>Date:</strong> {{ selected_reservation.date }}</p>
-                <p><strong>Time:</strong> {{ selected_reservation.start_time }} to {{ selected_reservation.end_time }}</p>
-                <p><strong>Status:</strong> {{ selected_reservation.status }}</p>
-                <p><strong>Event Type:</strong> {{ selected_reservation.event_type }}</p>
+                <p><strong>Facility:</strong> {{ selected_reservation.facility|default:"N/A" }}</p>
+                <p><strong>Date:</strong> {{ selected_reservation.date|default:"N/A" }}</p>
+                <p><strong>Time:</strong> {{ selected_reservation.start_time|default:"N/A" }} to {{ selected_reservation.end_time|default:"N/A" }}</p>
+                <p><strong>Status:</strong> 
+                    {% if selected_reservation.status == 'Pending' %}
+                        Pending ({{ selected_reservation.admin_approvals|length|default:0 }}/4)
+                    {% else %}
+                        {{ selected_reservation.status }}
+                    {% endif %}
+                </p>
+                <p><strong>Event Type:</strong> {{ selected_reservation.event_type|default:"N/A" }}</p>
                 <p><strong>Participants:</strong> {{ selected_reservation.insider_count }} (Insider), {{ selected_reservation.outsider_count }} (Outsider)</p>
 
                 {% if selected_reservation.facilities_needed %}
@@ -108,9 +129,26 @@
                 {% if selected_reservation.reasons %}
                 <p><strong>Reasons:</strong> {{ selected_reservation.reasons }}</p>
                 {% endif %}
+
+                <h4>Admin Approvals</h4>
+                <ul>
+                    {% for admin, note in selected_reservation.admin_approvals.items %}
+                        <li><strong>{{ admin }}</strong>{% if note %}: {{ note }}{% endif %}</li>
+                    {% empty %}
+                        <li>No approvals yet.</li>
+                    {% endfor %}
+                </ul>
+                <h4>Admin Rejections</h4>
+                <ul>
+                    {% for admin, reason in selected_reservation.admin_rejections.items %}
+                        <li><strong>{{ admin }}</strong>{% if reason %}: {{ reason }}{% endif %}</li>
+                    {% empty %}
+                        <li>No rejections yet.</li>
+                    {% endfor %}
+                </ul>
             </div>
 
-            {% if selected_reservation.status == 'Pending' %}
+            {% if selected_reservation.status == 'Pending' and user.username not in selected_reservation.admin_approvals and user.username not in selected_reservation.admin_rejections %}
             <div class="action-buttons">
                 <form method="POST" action="{% url 'admin_portal:approve_reservation' selected_reservation.id %}">
                     {% csrf_token %}

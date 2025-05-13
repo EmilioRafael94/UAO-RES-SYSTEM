@@ -47,6 +47,10 @@ class Reservation(models.Model):
     admin_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True)
 
+    # New fields from the code block
+    admin_approvals = models.JSONField(default=dict, blank=True)
+    admin_rejections = models.JSONField(default=dict, blank=True)
+
     def __str__(self):
         return f"Reservation by {self.user.username} - {self.facility} on {self.date} - {self.status}"
     
@@ -54,13 +58,6 @@ class Reservation(models.Model):
         ordering = ['-date', '-created_at']
         verbose_name = _('Reservation')
         verbose_name_plural = _('Reservations')
-
-    @property
-    def time_slot(self):
-        """Format the time slot as a string"""
-        if self.start_time and self.end_time:
-            return f"{self.start_time.strftime('%I:%M %p')} - {self.end_time.strftime('%I:%M %p')}"
-        return ""
 
     @property
     def total_attendees(self):

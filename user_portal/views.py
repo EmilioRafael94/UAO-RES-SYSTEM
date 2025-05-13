@@ -277,7 +277,7 @@ def get_user_calendar_events(request):
                 'facilities_needed': reservation.facilities_needed,
                 'manpower_needed': reservation.manpower_needed,
                 'admin_notes': reservation.admin_notes,
-                'time_slot': reservation.time_slot
+                'formatted_time': f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
             }
         })
     
