@@ -557,6 +557,14 @@ def verify_receipt(request, pk):
 
 @login_required
 def upload_security_pass(request, reservation_id):
+    """Upload security pass by the superuser"""
+    # Check if the user is a superuser
+    if not request.user.is_superuser:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Permission denied'
+        }, status=403)
+        
     reservation = get_object_or_404(Reservation, id=reservation_id)
 
     if request.method == 'POST':
@@ -564,10 +572,10 @@ def upload_security_pass(request, reservation_id):
 
         if pass_file:
             # Save the file to the reservation
-            reservation.security_pass_file = pass_file
+            reservation.security_pass_pdf = pass_file
             
-            # Update the reservation status
-            if reservation.status == 'Payment Approved':
+            # Update the reservation status - ensuring it moves to Security Pass Issued
+            if reservation.status in ['Payment Approved', 'Needs Security Pass', 'Billing Uploaded']:
                 reservation.status = 'Security Pass Issued'
             
             reservation.save()
@@ -576,7 +584,7 @@ def upload_security_pass(request, reservation_id):
             return JsonResponse({
                 'status': 'success',
                 'pass': {
-                    'file_url': reservation.security_pass_file.url,
+                    'file_url': reservation.security_pass_pdf.url,
                     'status': 'uploaded'
                 },
                 'reservation_status': reservation.status
@@ -597,6 +605,13 @@ def reservation_details_json(request, reservation_id):
     """
     Return reservation details in JSON format including billing and security pass info
     """
+    # Check if the user is a superuser
+    if not request.user.is_superuser:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Permission denied'
+        }, status=403)
+        
     reservation = get_object_or_404(Reservation, id=reservation_id)
     
     # Get billing information
@@ -620,16 +635,21 @@ def reservation_details_json(request, reservation_id):
     
     # Get security pass information
     pass_info = None
-    if reservation.security_pass_file:
+    if reservation.security_pass_pdf:
         pass_info = {
-            'file_url': reservation.security_pass_file.url,
+            'file_url': reservation.security_pass_pdf.url,
             'status': 'uploaded'
         }
+        
+        # Add completed form information if it exists
+        if reservation.completed_form:
+            pass_info['completed_form_url'] = reservation.completed_form.url
+            pass_info['completed_status'] = 'submitted'
     
     # Prepare the response data
     data = {
         'id': reservation.id,
-        'reference': reservation.security_pass_id,  # Using security_pass_id as reference
+        'reference': reservation.security_pass_id if hasattr(reservation, 'security_pass_id') else f'R-{reservation.id}',
         'status': reservation.status,
         'billing': billing_info,
         'pass': pass_info,

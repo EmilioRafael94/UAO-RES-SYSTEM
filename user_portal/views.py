@@ -394,13 +394,11 @@ def upload_completed_form(request, pk):
 
 @login_required
 def view_reservation_details(request, reservation_id):
-    """View a specific reservation and its details for the user"""
-    # Ensure the user can only view their own reservations
+    """View details of a single reservation"""
     reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    return render(request, 'user_portal/view_reservation_details.html', {'reservation': reservation})
     
-    return render(request, 'user_portal/reservation_details.html', {
-        'reservation': reservation
-    })
+
 
 @login_required
 def upload_receipt(request, reservation_id):
@@ -416,5 +414,31 @@ def upload_receipt(request, reservation_id):
             messages.success(request, "Payment receipt uploaded successfully. It will be reviewed shortly.")
         else:
             messages.error(request, "No file was uploaded. Please try again.")
+    
+    return redirect('user_portal:view_reservation_details', reservation_id=reservation_id)
+
+@login_required
+def upload_completed_form(request, reservation_id):
+    """Upload completed security pass form for a reservation"""
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    if request.method == 'POST':
+        completed_form = request.FILES.get('completed_form')
+        
+        if completed_form:
+            # Save the completed form to the reservation
+            reservation.completed_form = completed_form
             
-    return redirect('view_reservation_details', reservation_id=reservation_id)
+            # Update status to indicate the form was submitted
+            if reservation.status == 'Security Pass Issued':
+                reservation.status = 'Security Pass Completed'
+            elif reservation.status == 'Billing Uploaded':
+                # In case security pass was issued but status wasn't updated
+                reservation.status = 'Security Pass Completed'
+            
+            reservation.save()
+            messages.success(request, "Security pass form uploaded successfully.")
+        else:
+            messages.error(request, "No file was uploaded. Please try again.")
+    
+    return redirect('user_portal:my_reservations')

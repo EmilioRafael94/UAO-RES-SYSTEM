@@ -15,10 +15,12 @@ urlpatterns = [
     path('delete/<int:id>/', views.delete_reservation, name='delete_reservation'),
     path('get-reservations/', views.get_reservations, name='get_reservations'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('upload-receipt/<int:pk>/', views.upload_receipt, name='upload_receipt'),
-    path('reservations/<int:reservation_id>/upload_completed_form/', views.upload_completed_form, name='upload_completed_form'),
+    path('upload-receipt/<int:reservation_id>/', views.upload_receipt, name='upload_receipt'),
     path('reservations/', views.my_reservations, name='my_reservations'),
-    path('upload-completed-form/<int:pk>/', views.upload_completed_form, name='upload_completed_form'),
+    path('upload-completed-form/<int:reservation_id>/', views.upload_completed_form, name='upload_completed_form'),
+
+  
+
 
 
     
