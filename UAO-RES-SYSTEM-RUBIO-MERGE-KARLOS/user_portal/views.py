@@ -35,26 +35,35 @@ def user_makereservation(request):
     today = timezone.now().date()
 
     if request.method == 'POST':
+        # Get and validate reservation date
+        date = request.POST.get('date')
+        try:
+            reservation_date = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            messages.warning(request, "Invalid date format.")
+            return render(request, 'user_portal/user_makereservation.html', {'today': today})
+
+        if reservation_date < today:
+            messages.warning(request, "You cannot reserve a date that has already passed.")
+            return render(request, 'user_portal/user_makereservation.html', {'today': today})
+
+        # Proceed with the rest of your logic
         organization = request.POST.get('organization')
         representative = request.POST.get('representative')
         contact_number = request.POST.get('contact_number')
         date_reserved = request.POST.get('date_reserved')
         insider_count = request.POST.get('insider_count', 0)
         outsider_count = request.POST.get('outsider_count', 0)
-        date = request.POST.get('date')
         start_time = request.POST.get('start_time')
         end_time = request.POST.get('end_time')
         reasons = request.POST.get('reasons', '').strip()
 
-        # Event Types
         event_types = request.POST.getlist('event_type')
         event_type = ', '.join(event_types) if event_types else 'Not specified'
 
-        # Facility Use
         facility_use_selected = request.POST.getlist('facilities')
         facility_use = ', '.join(facility_use_selected) if facility_use_selected else 'None'
 
-        # Facilities Needed
         facility_keys = [
             'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
             'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
@@ -67,7 +76,6 @@ def user_makereservation(request):
             if request.POST.get(f"{key}_quantity")
         }
 
-        # Manpower Needed
         manpower_keys = [
             'security', 'janitor', 'electrician', 'technician',
             'assistant_technician', 'digital_clock_operator', 'plumber', 'other_manpower'
@@ -78,14 +86,13 @@ def user_makereservation(request):
             if request.POST.get(f"{key}_quantity")
         }
 
-        # Save the reservation
         reservation = Reservation.objects.create(
             user=request.user,
             organization=organization,
             representative=representative,
             contact_number=contact_number,
             date_reserved=date_reserved,
-            date=date,
+            date=reservation_date,
             insider_count=insider_count,
             outsider_count=outsider_count,
             start_time=start_time,
@@ -100,9 +107,7 @@ def user_makereservation(request):
 
         return redirect('user_portal:user_myreservation')
 
-    return render(request, 'user_portal/user_makereservation.html', {
-        'today': today,
-    })
+    return render(request, 'user_portal/user_makereservation.html', {'today': today})
 
 
 
@@ -216,10 +221,14 @@ def update_profile(request):
     return render(request, 'user_portal/user_profile.html', context)
 
 
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import Reservation
+
 @login_required
 def get_reservations(request):
     reservations = Reservation.objects.all()
-    
+
     events = []
     for r in reservations:
         # Convert facilities_needed to a string with quantities (assuming it's a dictionary)
@@ -245,6 +254,8 @@ def get_reservations(request):
             'event_type': r.event_type,
             'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
             'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
+            'user_name': r.representative or 'Unknown',  # Add representative (or user_name)
         })
-    
+
     return JsonResponse(events, safe=False)
+

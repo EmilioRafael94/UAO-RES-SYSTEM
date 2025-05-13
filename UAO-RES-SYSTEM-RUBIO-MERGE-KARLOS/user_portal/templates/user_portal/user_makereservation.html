@@ -163,10 +163,40 @@
     </main>
 
     <script>
-        document.querySelector('form').addEventListener('submit', function () {
-            const selected = [...document.querySelectorAll('input[name="facilities"]:checked')]
+        document.querySelector('form').addEventListener('submit', function (e) {
+            // Get today's date
+            const today = new Date().toISOString().split('T')[0];
+
+            // Get actual use date
+            const dateOfUse = document.getElementById('date').value;
+
+            // Validate date not in the past
+            if (!dateOfUse || dateOfUse < today) {
+                alert("⚠️ The date of actual use is in the past or invalid. Please choose a valid future date.");
+                e.preventDefault();
+                return;
+            }
+
+            // Selected Facilities
+            const facilities = [...document.querySelectorAll('input[name="facilities"]:checked')]
                 .map(cb => cb.value);
-            alert("Selected facilities: " + selected.join(", "));
+
+            // Selected Event Types
+            const eventTypes = [...document.querySelectorAll('input[name="event_type"]:checked')]
+                .map(cb => cb.value);
+
+            // Build confirmation message
+            const message = `Please confirm your reservation:\n\n` +
+                `📅 Date of Actual Use: ${dateOfUse}\n` +
+                `🏟️ Facilities: ${facilities.length ? facilities.join(", ") : "None selected"}\n` +
+                `🎯 Event Type: ${eventTypes.length ? eventTypes.join(", ") : "Not specified"}\n\n` +
+                `Do you want to proceed with submitting this reservation?`;
+
+            // Ask for user confirmation
+            const confirmSubmit = confirm(message);
+            if (!confirmSubmit) {
+                e.preventDefault(); // Cancel form submit
+            }
         });
     </script>
 </body>
