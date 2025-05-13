@@ -1,0 +1,69 @@
+        {% else %}
+        <div class="no-selection">
+            <p>Select a reservation from the sidebar to view details.</p>
+        </div>
+        {% endif %}
+
+        <!-- Approved Reservations Section -->
+        <div class="approved-reservations-section" style="margin-top: 24px;">
+            <h2>Reservations Ready for Billing</h2>
+            <table class="reservation-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Facility</th>
+                        <th>Date</th>
+                        <th>Billing Status</th>
+                        <th>Payment Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in approved_reservations %}
+                    <tr>
+                        <td>{{ reservation.user.username }}</td>
+                        <td>{{ reservation.facility_use }}</td>
+                        <td>{{ reservation.date }}</td>
+                        <td>
+                            {% if reservation.billing_statement %}
+                                <span class="badge badge-success">Released</span>
+                            {% else %}
+                                <span class="badge badge-warning">Not Released</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if reservation.payment_receipt %}
+                                {% if reservation.status == 'Payment Approved' %}
+                                    <span class="badge badge-success">Approved</span>
+                                {% elif reservation.status == 'Payment Rejected' %}
+                                    <span class="badge badge-danger">Rejected</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Pending Verification</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-secondary">No Payment</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not reservation.billing_statement %}
+                                <form method="post" action="{% url 'superuser_portal:release_billing' reservation.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary">Release Billing</button>
+                                </form>
+                            {% endif %}
+                            {% if reservation.payment_receipt and reservation.status == 'Payment Submitted' %}
+                                <form method="post" action="{% url 'superuser_portal:verify_payment' reservation.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success">Verify Payment</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">No reservations ready for billing yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div> 

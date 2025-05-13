@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Admin Dashboard</h2>
+
+    <!-- Pending Reservations -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Pending Reservations</h4>
+        </div>
+        <div class="card-body">
+            {% if pending_reservations %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Facility</th>
+                                <th>Date</th>
+                                <th>Organization</th>
+                                <th>Representative</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reservation in pending_reservations %}
+                                <tr>
+                                    <td>{{ reservation.facility_use }}</td>
+                                    <td>{{ reservation.date }}</td>
+                                    <td>{{ reservation.organization }}</td>
+                                    <td>{{ reservation.representative }}</td>
+                                    <td>
+                                        <a href="{% url 'admin_portal:approve_reservation' reservation.id %}" class="btn btn-primary btn-sm">Review</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No pending reservations to review.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Your Approved Reservations -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Your Approved Reservations</h4>
+        </div>
+        <div class="card-body">
+            {% if admin_approved %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Facility</th>
+                                <th>Date</th>
+                                <th>Organization</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reservation in admin_approved %}
+                                <tr>
+                                    <td>{{ reservation.facility_use }}</td>
+                                    <td>{{ reservation.date }}</td>
+                                    <td>{{ reservation.organization }}</td>
+                                    <td>{{ reservation.status }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>You haven't approved any reservations yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Your Rejected Reservations -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Your Rejected Reservations</h4>
+        </div>
+        <div class="card-body">
+            {% if admin_rejected %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Facility</th>
+                                <th>Date</th>
+                                <th>Organization</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reservation in admin_rejected %}
+                                <tr>
+                                    <td>{{ reservation.facility_use }}</td>
+                                    <td>{{ reservation.date }}</td>
+                                    <td>{{ reservation.organization }}</td>
+                                    <td>{{ reservation.rejection_reason }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>You haven't rejected any reservations yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

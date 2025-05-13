@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Submit Payment Receipt</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Reservation Details</h5>
+                    <div class="mb-3">
+                        <p><strong>Facility:</strong> {{ reservation.facility_use }}</p>
+                        <p><strong>Date:</strong> {{ reservation.date }}</p>
+                        <p><strong>Organization:</strong> {{ reservation.organization }}</p>
+                        <p><strong>Representative:</strong> {{ reservation.representative }}</p>
+                        <p><strong>Billing Amount:</strong> ₱{{ reservation.billing_amount }}</p>
+                    </div>
+
+                    <h5>Billing Statement</h5>
+                    <div class="mb-3">
+                        {% if reservation.billing_statement %}
+                            <p><a href="{{ reservation.billing_statement.url }}" target="_blank" class="btn btn-info">View Billing Statement</a></p>
+                        {% else %}
+                            <p class="text-danger">No billing statement available</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="mt-4">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="payment_receipt">Payment Receipt:</label>
+                            <input type="file" name="payment_receipt" id="payment_receipt" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                            <small class="form-text text-muted">Upload your payment receipt (PDF or image file)</small>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">Submit Payment</button>
+                            <a href="{% url 'user_portal:user_myreservation' %}" class="btn btn-secondary">Back</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
