@@ -60,7 +60,10 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'admin_portal' / 'templates'],  # Add this line
+        'DIRS': [
+            BASE_DIR / 'admin_portal' / 'templates',  # Existing path for admin templates
+            BASE_DIR / 'superuser_portal' / 'templates',  # Add this line for superuser portal templates
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -72,7 +75,6 @@ TEMPLATES = [
         },
     },
 ]
-
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
@@ -135,3 +137,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 LOGOUT_REDIRECT_URL = '/' 
+USE_TZ = True
+TIME_ZONE = 'Asia/Manila'

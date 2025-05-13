@@ -1,6 +1,15 @@
 from django import forms
 from django.contrib.auth.models import User
 from user_portal.models import Profile
+from .models import Reservation
+
+FACILITY_CHOICES = [
+    ('Gymnasium', 'Gymnasium'),
+    ('Covered Court', 'Covered Court'),
+    ('Football Field', 'Football Field'),
+    ('Table Tennis Dug-out', 'Table Tennis Dug-out'),
+]
+
 
 class UserUpdateForm(forms.ModelForm):
     class Meta:
@@ -63,3 +72,40 @@ class ProfileForm(forms.ModelForm):
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
 
+class ReservationForm(forms.ModelForm):
+    facilities_needed = forms.MultipleChoiceField(
+        choices=FACILITY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    class Meta:
+        model = Reservation
+        fields = '__all__'  # Or explicitly list the fields you want to use
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+        # Override the default class for checkboxes
+        self.fields['facilities_needed'].widget.attrs.pop('class', None)
+
+class BillingForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['billing_file', 'amount', 'due_date']
+
+class ReceiptUploadForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['receipt_file']
+
+class SecurityPassForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['security_pass_pdf']
+
+class CompletedFormUploadForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['completed_form']

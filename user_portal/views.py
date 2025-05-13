@@ -5,8 +5,10 @@ from user_portal.models import Reservation # Make sure you have these forms impo
 from django.contrib import messages
 from django.utils import timezone
 import json
-from django.http import JsonResponse
+from django.http import HttpResponseNotFound, JsonResponse
 from .models import Notification
+from .models import Reservation
+from .forms import ReceiptUploadForm, CompletedFormUploadForm
 
 
 SAMPLE_RESERVATIONS = [
@@ -38,6 +40,7 @@ def user_makereservation(request):
     today = timezone.now().date()
 
     if request.method == 'POST':
+        # Collect data from the form
         organization = request.POST.get('organization')
         representative = request.POST.get('representative')
         contact_number = request.POST.get('contact_number')
@@ -53,11 +56,11 @@ def user_makereservation(request):
         event_types = request.POST.getlist('event_type')
         event_type = ', '.join(event_types) if event_types else 'Not specified'
 
-        # Facility Use
-        facility_use_selected = request.POST.getlist('facilities')
+        # Facility Use (Selected facilities)
+        facility_use_selected = request.POST.getlist('facilities_needed')
         facility_use = ', '.join(facility_use_selected) if facility_use_selected else 'None'
 
-        # Facilities Needed
+        # Facilities Needed (with quantities)
         facility_keys = [
             'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
             'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
@@ -94,7 +97,7 @@ def user_makereservation(request):
             start_time=start_time,
             end_time=end_time,
             reasons=reasons,
-            facility_use=facility_use,
+            facility_use=facility_use,  # Correct field for selected facilities
             event_type=event_type,
             facilities_needed=facilities_needed,
             manpower_needed=manpower_needed,
@@ -337,13 +340,81 @@ def update_reservation_status(request, reservation_id, status):
     return redirect('user_portal:user_myreservation')
 
 @login_required
-def upload_receipt(request, reservation_id):
+def upload_receipt(request, pk):
+    try:
+        reservation = Reservation.objects.get(pk=pk, user=request.user)
+
+        if request.method == 'POST' and request.FILES.get('receipt_file'):
+            reservation.receipt_file = request.FILES['receipt_file']
+            reservation.status = 'Payment Pending'  # Optional
+            reservation.save()
+            return redirect('user_portal:user_myreservation')
+
+        return render(request, 'user_portal/upload_receipt.html', {'reservation': reservation})
+
+    except Reservation.DoesNotExist:
+        return HttpResponseNotFound("Reservation not found")
+
+@login_required
+def upload_completed_form(request, reservation_id):
     reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
 
-    if request.method == 'POST' and request.FILES.get('receipt_file'):
-        receipt = request.FILES['receipt_file']
-        reservation.receipt_file = receipt
+    if request.method == 'POST' and request.FILES.get('completed_form'):
+        form_file = request.FILES['completed_form']
+        reservation.completed_form = form_file
         reservation.save()
-        messages.success(request, "Receipt uploaded successfully.")
+        messages.success(request, "Completed form uploaded successfully.")
 
     return redirect('user_portal:user_myreservation')
+
+
+@login_required
+def my_reservations(request):
+    """View all user reservations"""
+    reservations = Reservation.objects.filter(user=request.user).order_by('-date')
+    
+    return render(request, 'user_portal/my_reservations.html', {
+        'reservations': reservations
+    })
+
+
+
+@login_required
+def upload_completed_form(request, pk):
+    reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
+    if request.method == 'POST':
+        form = CompletedFormUploadForm(request.POST, request.FILES, instance=reservation)
+        if form.is_valid():
+            form.save()
+            return redirect('my_reservations')
+    else:
+        form = CompletedFormUploadForm(instance=reservation)
+    return render(request, 'user_portal/upload_completed_form.html', {'form': form})
+
+
+@login_required
+def view_reservation_details(request, reservation_id):
+    """View a specific reservation and its details for the user"""
+    # Ensure the user can only view their own reservations
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    return render(request, 'user_portal/reservation_details.html', {
+        'reservation': reservation
+    })
+
+@login_required
+def upload_receipt(request, reservation_id):
+    """Upload payment receipt for a reservation"""
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    if request.method == 'POST':
+        receipt_file = request.FILES.get('receipt_file')
+        
+        if receipt_file:
+            reservation.receipt_file = receipt_file
+            reservation.save()
+            messages.success(request, "Payment receipt uploaded successfully. It will be reviewed shortly.")
+        else:
+            messages.error(request, "No file was uploaded. Please try again.")
+            
+    return redirect('view_reservation_details', reservation_id=reservation_id)

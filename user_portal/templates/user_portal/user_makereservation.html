@@ -71,12 +71,14 @@
             <div class="make_reservation-form-group">
                 <label>Facilities to be used</label>
                 <div class="make_reservation-checkbox-group">
-                    <label><input type="checkbox" name="facilities" value="Gymnasium"> Gymnasium</label>
-                    <label><input type="checkbox" name="facilities" value="Covered Court"> Covered Court</label>
-                    <label><input type="checkbox" name="facilities" value="Football Field"> Football Field</label>
-                    <label><input type="checkbox" name="facilities" value="Table Tennis Dug-out"> Table Tennis Dug-out</label>
+                    <label><input type="checkbox" name="facilities_needed" value="Gymnasium"> Gymnasium</label>
+                    <label><input type="checkbox" name="facilities_needed"  value="Covered Court"> Covered Court</label>
+                    <label><input type="checkbox" name="facilities_needed" value="Football Field"> Football Field</label>
+                    <label><input type="checkbox" name="facilities_needed" value="Table Tennis Dug-out"> Table Tennis Dug-out</label>
                 </div>
             </div>
+          
+ 
 
             <!-- Event Type -->
             <div class="make_reservation-form-group">
@@ -147,6 +149,7 @@
                     </table>
                 </div>
             </div>
+            
 
             <div class="make_reservation-form-group">
                 <input type="submit" value="Submit">
@@ -156,10 +159,10 @@
 
     <script>
         document.querySelector('form').addEventListener('submit', function () {
-            const selected = [...document.querySelectorAll('input[name="facilities"]:checked')]
-                .map(cb => cb.value);
-            alert("Selected facilities: " + selected.join(", "));
-        });
+    const selected = [...document.querySelectorAll('input[name="facilities_needed"]:checked')]
+        .map(cb => cb.value);
+    alert("Selected facilities: " + selected.join(", "));
+});
     </script>
 </body>
 </html>

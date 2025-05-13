@@ -66,7 +66,7 @@
                         {% endif %}
                     </td>
                     <td>{{ reservation.event_type|default:"N/A" }}</td>
-                    <td>{{ reservation.status|default:"Pending" }}</td>
+                    <td>{{ reservation.status|default:"Needs admin approval"}}</td>
                     <td>
                         <a href="{% url 'user_portal:edit_reservation' reservation.id %}" class="btn btn-edit">Edit</a>
                         <form action="{% url 'user_portal:delete_reservation' reservation.id %}" method="post" style="display:inline;">
@@ -120,6 +120,51 @@
                         </div>
                     </td>
                 </tr>
+            <tr>
+    <td colspan="12">
+        <div class="security-pass-section">
+            <strong>Security Pass</strong>
+            <table class="security-table">
+                <thead>
+                    <tr>
+                        <th>Security Pass</th>
+                        <th>Completed Form</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>R-{{ reservation.id }}<br>
+                            {% if reservation.security_pass_pdf %}
+                                <a href="{{ reservation.security_pass_pdf.url }}" target="_blank">Download PDF</a>
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if reservation.completed_form %}
+                                Uploaded
+                            {% else %}
+                                <form action="{% url 'user_portal:upload_completed_form' reservation.id %}" method="POST" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="file" name="completed_form" required>
+                                    <button type="submit">Upload</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if reservation.completed_form %}
+                                <span style="color: green;">APPROVED</span>
+                            {% else %}
+                                <span style="color: gray;">PENDING</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </td>
+</tr>
 
                 {% endfor %}
             </tbody>

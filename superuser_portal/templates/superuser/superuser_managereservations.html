@@ -3,197 +3,177 @@
 {% block title %}Manage Reservations{% endblock %}
 
 {% block content %}
-    <div class="reservations-container">
-        <!-- Filter Section -->
-        <div class="filter-bar">
-            <select id="statusFilter" onchange="applyFilter(this.value)">
-                <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Reservations</option>
-                <option value="needs_billing" {% if current_filter == 'needs_billing' %}selected{% endif %}>Needs Billing</option>
-                <option value="needs_payment" {% if current_filter == 'needs_payment' %}selected{% endif %}>Needs Receipt Verification</option>
-                <option value="needs_pass" {% if current_filter == 'needs_pass' %}selected{% endif %}>Needs Pass Review</option>
-            </select>
-            
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search reservations..." oninput="searchReservations()">
-            </div>
-        </div>
+<div class="reservations-container">
+    <!-- Filter Section -->
+    <div class="filter-bar">
+        <select id="statusFilter" onchange="applyFilter(this.value)">
+            <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Reservations</option>
+            <option value="needs_billing" {% if current_filter == 'needs_billing' %}selected{% endif %}>Needs Billing</option>
+            <option value="needs_pass" {% if current_filter == 'needs_pass' %}selected{% endif %}>Needs Pass Review</option>
+            <option value="today" {% if current_filter == 'today' %}selected{% endif %}>Today's Reservations</option>
+        </select>
 
-        <!-- Reservations Table -->
-        <div class="reservations-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Reference #</th>
-                        <th>Facility</th>
-                        <th>Event Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="reservationsBody">
-                    {% for res in reservations %}
-                    <tr>
-                        <td>{{ res.reference }}</td>
-                        <td>{{ res.facility }}</td>
-                        <td>{{ res.date|date:"M d, Y" }}</td>
-                        <td>
-                            <span class="status-badge status-{{ res.status|slugify }}">
-                                {{ res.status }}
-                            </span>
-                        </td>
-                        <td>
-                            <button onclick="viewReservationDetails('{{ res.id }}')" class="view-btn">Go</button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="no-data">No reservations found</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search reservations..." oninput="searchReservations()">
         </div>
     </div>
+
+    <!-- Reservations Table -->
+    <div class="reservations-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Reference #</th>
+                    <th>Facility</th>
+                    <th>Event Date</th>
+                    <th>Status</th>
+                    <th>Payment Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="reservationsBody">
+                {% for res in reservations %}
+                <tr>
+                    <td>{{ res.reference }}</td>
+                    <td>{{ res.facility }}</td>
+                    <td>{{ res.date|date:"M d, Y" }}</td>
+                    <td><span class="status-badge status-{{ res.status|slugify }}">{{ res.status }}</span></td>
+                    <td>
+                        {% if res.receipt_file %}
+                            <span class="payment-status payment-received">
+                                <a href="{{ res.receipt_file.url }}" target="_blank">View payment</a>
+                            </span>
+                        {% else %}
+                            <span class="payment-status payment-not-received">No payments yet</span>
+                        {% endif %}
+                    </td>
+                    <td><button onclick="viewReservationDetails('{{ res.id }}')" class="view-btn">Go</button></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="no-data">No reservations found</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
 
 {% block modal %}
-    <!-- Reservation Details Modal -->
-    <div id="reservationModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <div class="modal-header">
-                <h2>Reservation Details</h2>
-            </div>
-            <div class="modal-body">
-                <div class="steps-container">
-                    <!-- Billing Section -->
-                    <div class="step-section">
-                        <h3>Step 1: Billing</h3>
-                        <div id="billingDetails">
-                            Loading...
-                        </div>
-                    </div>
+<div id="reservationModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Reservation Details</h2>
 
-                    <!-- Payment Section -->
-                    <div class="step-section">
-                        <h3>Step 2: Payment Verification</h3>
-                        <div id="paymentDetails">
-                            Loading...
-                        </div>
-                    </div>
+        <!-- REJECT BUTTON -->
+        <button id="rejectBtn" class="reject-btn" onclick="rejectReservation()">Reject Reservation</button>
 
-                    <!-- Security Pass Section -->
-                    <div class="step-section">
-                        <h3>Step 3: Security Pass</h3>
-                        <div id="passDetails">
-                            Loading...
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- BILLING FORM -->
+        <div id="billingSection" class="form-section">
+            <h3>Billing Details</h3>
+            <div id="billingDetails"></div>
+            <form method="post" enctype="multipart/form-data" 
+                  action="#" 
+                  class="billing-form" id="billingForm">
+                {% csrf_token %}
+                <input type="file" name="billing_file" accept=".pdf,.doc,.docx,.jpg,.png" required>
+                <input type="number" name="amount" step="0.01" placeholder="Amount" required>
+                <input type="date" name="due_date" required>
+                <input type="hidden" name="reservation_id" id="billingReservationId">
+                <button type="submit">Upload Billing</button>
+            </form>
+        </div>
+
+        <!-- SECURITY PASS FORM -->
+        <div id="passSection" class="form-section">
+            <h3>Security Pass</h3>
+            <div id="passDetails"></div>
+            <form method="post" enctype="multipart/form-data" 
+                  action="#" 
+                  class="pass-form" id="passForm">
+                {% csrf_token %}
+                <input type="file" name="pass_file" accept=".pdf,.doc,.docx,.jpg,.png" required>
+                <input type="hidden" name="reservation_id" id="passReservationId">
+                <button type="submit">Upload Security Pass</button>
+            </form>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Filter functionality
     function applyFilter(filterValue) {
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('filter', filterValue);
         window.location.href = currentUrl.toString();
     }
 
-    // Search functionality
     function searchReservations() {
         const searchText = document.getElementById('searchInput').value.toLowerCase();
         const rows = document.querySelectorAll('#reservationsBody tr');
-        
         rows.forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(searchText) ? '' : 'none';
         });
     }
 
-    // Modal functionality
     const modal = document.getElementById('reservationModal');
     const closeBtn = document.querySelector('.modal-content .close');
+    let currentReservationId = null;
 
     function viewReservationDetails(reservationId) {
+        currentReservationId = reservationId;
         modal.style.display = 'block';
-        
-        // Load reservation details via Ajax
-        fetch(`/superuser_portal/reservation/${reservationId}/details/`)
+
+        // Set form actions with correct paths
+        document.getElementById('billingForm').action = `/superuser_portal/billing/${reservationId}/`;
+        document.getElementById('passForm').action = `/superuser_portal/pass/${reservationId}/`;
+
+        // Set hidden form values
+        document.getElementById('billingReservationId').value = reservationId;
+        document.getElementById('passReservationId').value = reservationId;
+
+        // Reset existing content
+        document.getElementById('billingDetails').innerHTML = '';
+        document.getElementById('passDetails').innerHTML = '';
+
+        fetch(`/superuser_portal/reservation/${reservationId}/details/json/`)
             .then(response => response.json())
             .then(data => {
                 updateBillingSection(data.billing);
-                updatePaymentSection(data.payment);
                 updatePassSection(data.pass);
             });
     }
 
     function updateBillingSection(billing) {
-        const billingHtml = billing.statement_url ? 
-            `<div class="file-section">
-                <a href="${billing.statement_url}" class="file-link" target="_blank">
-                    View Billing Statement
-                </a>
-            </div>` :
-            `<div class="upload-section">
-                <form onsubmit="uploadBilling(event)">
-                    <input type="file" required>
-                    <button type="submit">Upload Billing Statement</button>
-                </form>
-            </div>`;
+        let billingHtml = '';
+        
+        // Check if a billing statement exists
+        if (billing && billing.statement_url) {
+            billingHtml = `
+                <div class="file-section">
+                    <a href="${billing.statement_url}" class="file-link" target="_blank">View Billing Statement</a>
+                    <div class="billing-details">
+                        <p>Amount: $${billing.amount || 'N/A'}</p>
+                        <p>Due date: ${billing.due_date || 'N/A'}</p>
+                    </div>
+                </div>`;
+        } else {
+            billingHtml = `<div class="pending-section">No billing statement uploaded yet.</div>`;
+        }
         
         document.getElementById('billingDetails').innerHTML = billingHtml;
     }
 
-    function updatePaymentSection(payment) {
-        const paymentHtml = payment.receipt_url ?
-            `<div class="file-section">
-                <a href="${payment.receipt_url}" class="file-link" target="_blank">
-                    View Payment Receipt
-                </a>
-                <button onclick="verifyPayment(${payment.id})" class="verify-btn">
-                    Verify Payment
-                </button>
-            </div>` :
-            `<div class="pending-section">
-                Waiting for payment receipt...
-            </div>`;
-        
-        document.getElementById('paymentDetails').innerHTML = paymentHtml;
-    }
-
     function updatePassSection(pass) {
-        const passHtml = pass.file_url ?
-            `<div class="file-section">
-                <a href="${pass.file_url}" class="file-link" target="_blank">
-                    View Security Pass
-                </a>
-                <button onclick="verifyPass(${pass.id})" class="verify-btn">
-                    Verify Pass
-                </button>
+        const passHtml = pass && pass.file_url ? `
+            <div class="file-section">
+                <a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>
             </div>` :
-            `<div class="pending-section">
-                Waiting for security pass...
-            </div>`;
-        
+            `<div class="pending-section">Waiting for security pass...</div>`;
         document.getElementById('passDetails').innerHTML = passHtml;
     }
 
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
-    }
-
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    // CSRF Token handling for Ajax requests
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -209,7 +189,6 @@
         return cookieValue;
     }
 
-    // Add CSRF token to all fetch requests
     function fetchWithToken(url, options = {}) {
         const csrfToken = getCookie('csrftoken');
         return fetch(url, {
@@ -220,6 +199,130 @@
             },
         });
     }
+
+    function rejectReservation() {
+        if (!confirm("Are you sure you want to reject this reservation?")) return;
+
+        fetchWithToken(`/superuser_portal/reservation/${currentReservationId}/reject/`, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("Reservation rejected successfully.");
+                modal.style.display = 'none';
+                location.reload();
+            } else {
+                alert("Failed to reject reservation.");
+            }
+        });
+    }
+
+    // AJAX security pass form submission
+    document.getElementById('passForm').addEventListener('submit', function (e) {
+        e.preventDefault(); // prevent default form submission
+
+        const form = e.target;
+        const formData = new FormData(form);
+
+        fetchWithToken(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Security pass uploaded successfully.');
+                updatePassSection(data.pass);
+                form.reset();  // Reset the form
+                
+                // Update the reservation status
+                if (data.reservation_status) {
+                    // If the page has a visible status indicator for this reservation
+                    const statusIndicators = document.querySelectorAll(`[data-reservation-id="${currentReservationId}"] .status-badge`);
+                    if (statusIndicators.length > 0) {
+                        statusIndicators.forEach(indicator => {
+                            indicator.textContent = data.reservation_status;
+                            // Update the class if needed
+                            indicator.className = `status-badge status-${data.reservation_status.toLowerCase().replace(/\s+/g, '-')}`;
+                        });
+                    }
+                }
+            } else {
+                alert('Failed to upload security pass: ' + (data.message || 'Unknown error.'));
+            }
+        })
+        .catch(error => {
+            console.error('Upload error:', error);
+            alert('An error occurred while uploading the security pass.');
+        });
+    });
+
+    // AJAX billing form submission
+    document.getElementById('billingForm').addEventListener('submit', function (e) {
+    e.preventDefault(); // prevent default form submission
+
+    const form = e.target;
+    const formData = new FormData(form);
+
+    // Disable submit button to prevent multiple submissions
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+
+    fetchWithToken(form.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Get the response content regardless of status code
+        return response.json().then(data => {
+            // Add the status code to the response data for easier handling
+            return { ...data, statusCode: response.status };
+        });
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Billing statement uploaded successfully.');
+            updateBillingSection(data.billing);
+            form.reset();  // Reset the form
+        } else {
+            // Show more detailed error message
+            const errorMessage = data.message || 'Unknown error';
+            console.error('Server error details:', data);
+            alert(`Failed to upload billing statement: ${errorMessage}`);
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('An error occurred while uploading the billing statement: ' + error.message);
+    })
+    .finally(() => {
+        // Re-enable the submit button regardless of outcome
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Upload Billing';
+    });
+});
+
+    closeBtn.onclick = function () {
+        modal.style.display = 'none';
+    };
+
+    window.onclick = function (event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    window.onload = function () {
+        searchReservations();
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentFilter = urlParams.get('filter') || 'all';
+        document.getElementById('statusFilter').value = currentFilter;
+    };
 </script>
 {% endblock %}
-

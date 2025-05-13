@@ -967,3 +967,108 @@ header {
     width: 16px;
     text-align: center;
 }
+
+.status-processing {
+    background-color: orange;
+    color: white;
+}
+
+.reject-btn {
+    background-color: #e74c3c;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.reject-btn:hover {
+    background-color: #c0392b;
+}
+/* Luxurious minimalist bank-style form styling */
+
+body {
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #fafafa;
+    color: #1c1c1c;
+}
+
+/* Card container for each section */
+.form-section {
+    background-color: #ffffff;
+    border: 1px solid #d8dee4;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+}
+
+/* Section title */
+.form-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2b2b2b;
+    margin-bottom: 20px;
+    border-left: 4px solid #4a148c;
+    padding-left: 12px;
+}
+
+/* Inputs and selects inside the form section */
+.form-section input[type="file"],
+.form-section input[type="text"],
+.form-section input[type="date"],
+.form-section input[type="number"],
+.form-section textarea {
+    padding: 10px 12px;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    width: auto;
+    max-width: 220px;
+    background-color: #fafafa;
+    transition: border 0.2s;
+}
+
+.form-section input:focus,
+.form-section textarea:focus {
+    outline: none;
+    border-color: #4a148c;
+    background-color: #fff;
+}
+
+/* Buttons */
+.form-section button {
+    background-color: #4a148c;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.form-section button:hover {
+    background-color: #30065d;
+}
+
+/* Reject button (exception styling) */
+.reject-btn {
+    background-color: #e53935;
+    padding: 9px 16px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    color: #fff;
+    transition: background-color 0.2s ease;
+}
+
+.reject-btn:hover {
+    background-color: #b71c1c;
+}

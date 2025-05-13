@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
+
 app_name = 'superuser_portal'
 
 urlpatterns = [
@@ -10,7 +11,7 @@ urlpatterns = [
     path('system-settings/', views.system_settings, name='system_settings'),
     path('user-roles/', views.user_roles, name='user_roles'),
     path('profile/', views.superuser_profile, name='superuser_profile'),
-      path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     
     # Facility management
     path('facility/', views.manage_facility, name='manage_facility'),
@@ -30,4 +31,17 @@ urlpatterns = [
     path('user/<int:user_id>/change-role/', views.change_user_role, name='change_user_role'),
     path('user/<int:user_id>/reset-password/', views.reset_user_password, name='reset_user_password'),
     path('user/<int:user_id>/update-status/', views.update_user_status, name='update_user_status'),
+    
+    path('pending/', views.pending_reservations, name='pending_reservations'),
+    path('approve/<int:pk>/', views.approve_reservation, name='approve_reservation'),
+    path('billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
+    path('receipt/verify/<int:pk>/', views.verify_receipt, name='verify_receipt'),
+    path('review-form/<int:pk>/', views.review_completed_form, name='review_completed_form'),
+    path('reservation/<int:reservation_id>/details/', views.reservation_details, name='reservation_details'),
+    path('reservation/<int:reservation_id>/details/json/', views.reservation_details_json, name='reservation_details_json'),
+    path('reservation/<int:reservation_id>/reject/', views.reject_reservation, name='reject_reservation'),
+    
+    # Fixed URL patterns for consistency
+    path('pass/<int:reservation_id>/', views.upload_security_pass, name='upload_security_pass'),
+    path('billing/<int:reservation_id>/delete/', views.delete_billing, name='delete_billing'),
 ]
