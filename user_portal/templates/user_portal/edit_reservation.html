@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Reservation</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="{% static 'user_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+            <h1>Xavier University Athletics Office</h1>
+        </div>
+
+        <div class="right-nav">
+            <a href="{% url 'user_portal:user_dashboard' %}">Dashboard</a>
+            <a href="{% url 'user_portal:user_myreservation' %}">My Reservations</a>
+            <a href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a>
+            <a href="{% url 'user_portal:user_calendar' %}">View Calendar</a>
+            <a href="{% url 'user_portal:user_profile' %}">Profile</a>
+        </div>
+    </header>
+
+    <main class="user_makereservation-container">
+        <h2>Edit Reservation</h2>
+        <form method="POST">
+            {% csrf_token %}
+    
+            <!-- Actual Use Date -->
+            <div class="make_reservation-form-group">
+                <label for="date">Date of Actual Use</label>
+                <input type="date" id="date" name="date" value="{{ reservation.date|date:'Y-m-d' }}" required>
+            </div>
+    
+            <!-- Start & End Time -->
+            <div class="make_reservation-form-group">
+                <label for="start_time">Start Time</label>
+                <input type="time" id="start_time" name="start_time" value="{{ reservation.start_time|time:'H:i' }}" required>
+            </div>
+            <div class="make_reservation-form-group">
+                <label for="end_time">End Time</label>
+                <input type="time" id="end_time" name="end_time" value="{{ reservation.end_time|time:'H:i' }}" required>
+            </div>
+    
+            <!-- Facilities -->
+            <div class="make_reservation-form-group">
+                <label>Facilities to be used</label>
+                <div class="make_reservation-checkbox-group">
+                    <label><input type="checkbox" name="facility_use" value="Gymnasium" {% if "Gymnasium" in facilities_list %}checked{% endif %}> Gymnasium</label>
+                    <label><input type="checkbox" name="facility_use" value="Covered Court" {% if "Covered Court" in facilities_list %}checked{% endif %}> Covered Court</label>
+                    <label><input type="checkbox" name="facility_use" value="Football Field" {% if "Football Field" in facilities_list %}checked{% endif %}> Football Field</label>
+                    <label><input type="checkbox" name="facility_use" value="Table Tennis Dug-out" {% if "Table Tennis Dug-out" in facilities_list %}checked{% endif %}> Table Tennis Dug-out</label>
+                </div>
+            </div>
+    
+            <!-- Facilities Needed -->
+            <!-- Facilities Needed -->
+        <div class="make_reservation-form-group">
+            <label>Facilities Needed (Quantity)</label>
+            <div class="make_reservation-facilities-grid">
+                <table>
+                    <tr>
+                        <td>Long Tables</td>
+                        <td><input type="number" name="long_tables_quantity" min="0" value="{{ facilities_quantity.long_tables_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Mono Block Chairs</td>
+                        <td><input type="number" name="mono_block_chairs_quantity" min="0" value="{{ facilities_quantity.mono_block_chairs_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Narra Chairs</td>
+                        <td><input type="number" name="narra_chairs_quantity" min="0" value="{{ facilities_quantity.narra_chairs_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Podium</td>
+                        <td><input type="number" name="podium_quantity" min="0" value="{{ facilities_quantity.podium_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>XU Seal</td>
+                        <td><input type="number" name="xu_seal_quantity" min="0" value="{{ facilities_quantity.xu_seal_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>XU Logo</td>
+                        <td><input type="number" name="xu_logo_quantity" min="0" value="{{ facilities_quantity.xu_logo_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Sound System</td>
+                        <td><input type="number" name="sound_system_quantity" min="0" value="{{ facilities_quantity.sound_system_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Bulletin Board</td>
+                        <td><input type="number" name="bulletin_board_quantity" min="0" value="{{ facilities_quantity.bulletin_board_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Scaffolding</td>
+                        <td><input type="number" name="scaffolding_quantity" min="0" value="{{ facilities_quantity.scaffolding_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Flag</td>
+                        <td><input type="number" name="flag_quantity" min="0" value="{{ facilities_quantity.flag_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Philippine Flag</td>
+                        <td><input type="number" name="philippine_flag_quantity" min="0" value="{{ facilities_quantity.philippine_flag_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>XU Flag</td>
+                        <td><input type="number" name="xu_flag_quantity" min="0" value="{{ facilities_quantity.xu_flag_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Ceiling Fans</td>
+                        <td><input type="number" name="ceiling_fans_quantity" min="0" value="{{ facilities_quantity.ceiling_fans_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Stand Fans</td>
+                        <td><input type="number" name="stand_fans_quantity" min="0" value="{{ facilities_quantity.stand_fans_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Iwata Fans</td>
+                        <td><input type="number" name="iwata_fans_quantity" min="0" value="{{ facilities_quantity.iwata_fans_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Stage Non-Acrylic</td>
+                        <td><input type="number" name="stage_non_acrylic_quantity" min="0" value="{{ facilities_quantity.stage_non_acrylic_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Digital Clock</td>
+                        <td><input type="number" name="digital_clock_quantity" min="0" value="{{ facilities_quantity.digital_clock_quantity }}"></td>
+                    </tr>
+                    <tr>
+                        <td>Others (Please specify)</td>
+                        <td><input type="text" name="others_specify" value="{{ facilities_quantity.others_specify }}"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+    
+            <!-- Manpower Needed -->
+            <!-- Manpower Needed -->
+<div class="make_reservation-form-group">
+    <label>Manpower Needed</label>
+    <div class="make_reservation-table-container">
+        <table>
+            <tr>
+                <td>Security</td>
+                <td><input type="number" name="security_quantity" min="0" value="{{ manpower_quantity.security_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Janitor</td>
+                <td><input type="number" name="janitor_quantity" min="0" value="{{ manpower_quantity.janitor_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Electrician</td>
+                <td><input type="number" name="electrician_quantity" min="0" value="{{ manpower_quantity.electrician_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Technician</td>
+                <td><input type="number" name="technician_quantity" min="0" value="{{ manpower_quantity.technician_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Assistant Technician</td>
+                <td><input type="number" name="assistant_technician_quantity" min="0" value="{{ manpower_quantity.assistant_technician_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Digital Clock Operator</td>
+                <td><input type="number" name="digital_clock_operator_quantity" min="0" value="{{ manpower_quantity.digital_clock_operator_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Plumber</td>
+                <td><input type="number" name="plumber_quantity" min="0" value="{{ manpower_quantity.plumber_quantity }}"></td>
+            </tr>
+            <tr>
+                <td>Other</td>
+                <td><input type="number" name="other_manpower_quantity" min="0" value="{{ manpower_quantity.other_manpower_quantity }}"></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+    
+            <!-- Submit -->
+            <div class="make_reservation-form-group">
+                <input type="submit" value="Update Reservation">
+            </div>
+        </form>
+    </main>
+    
+</body>
+</html>
+{% endblock %}

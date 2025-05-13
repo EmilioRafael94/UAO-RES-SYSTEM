@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h2>My Dashboard</h2>
+    
+    <!-- Pending Reservations -->
+    <div class="reservation-section">
+        <h3>Pending Reservations</h3>
+        {% if pending_reservations %}
+            <div class="reservation-list">
+                {% for reservation in pending_reservations %}
+                    <div class="reservation-card pending">
+                        <h4>{{ reservation.facility_use }}</h4>
+                        <p><strong>Date:</strong> {{ reservation.date }}</p>
+                        <p><strong>Time:</strong> {{ reservation.formatted_time }}</p>
+                        <p><strong>Organization:</strong> {{ reservation.organization }}</p>
+                        <p><strong>Status:</strong> {{ reservation.status }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No pending reservations</p>
+        {% endif %}
+    </div>
+
+    <!-- Upcoming Reservations -->
+    <div class="reservation-section">
+        <h3>Upcoming Reservations</h3>
+        {% if upcoming_reservations %}
+            <div class="reservation-list">
+                {% for reservation in upcoming_reservations %}
+                    <div class="reservation-card approved">
+                        <h4>{{ reservation.facility_use }}</h4>
+                        <p><strong>Date:</strong> {{ reservation.date }}</p>
+                        <p><strong>Time:</strong> {{ reservation.formatted_time }}</p>
+                        <p><strong>Organization:</strong> {{ reservation.organization }}</p>
+                        <p><strong>Status:</strong> {{ reservation.status }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No upcoming reservations</p>
+        {% endif %}
+    </div>
+
+    <!-- Notifications -->
+    <div class="notification-section">
+        <h3>Notifications</h3>
+        {% if notifications %}
+            <div class="notification-list">
+                {% for notification in notifications %}
+                    <div class="notification-card">
+                        <p>{{ notification.message }}</p>
+                        <small>{{ notification.created_at|timesince }} ago</small>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No new notifications</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.reservation-section {
+    margin-bottom: 30px;
+}
+
+.reservation-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.reservation-card {
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.reservation-card.pending {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+}
+
+.reservation-card.approved {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.notification-section {
+    margin-top: 30px;
+}
+
+.notification-list {
+    margin-top: 15px;
+}
+
+.notification-card {
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.notification-card small {
+    color: #6c757d;
+    font-size: 0.8em;
+}
+</style>
+{% endblock %}
