@@ -69,22 +69,26 @@ def user_makereservation(request):
                 messages.error(request, f"Invalid date format: {str(e)}")
                 return redirect('user_portal:user_makereservation')
 
-            # Check if the date is blocked
+            # Check if the date and time are blocked
             selected_facility = request.POST.getlist('facilities_needed')
             blocked = None
             if selected_facility:
                 blocked = BlockedDate.objects.filter(
                     facility__name__in=selected_facility,
                     start_date__lte=selected_date,
-                    end_date__gte=selected_date
+                    end_date__gte=selected_date,
+                    start_time__lte=start_time,
+                    end_time__gte=end_time
                 ).first()
             else:
                 blocked = BlockedDate.objects.filter(
                     start_date__lte=selected_date,
-                    end_date__gte=selected_date
+                    end_date__gte=selected_date,
+                    start_time__lte=start_time,
+                    end_time__gte=end_time
                 ).first()
             if blocked:
-                messages.error(request, f"Selected date is blocked for {blocked.facility.name}. Reason: {blocked.reason}")
+                messages.error(request, f"Selected date and time is blocked for {blocked.facility.name}. Reason: {blocked.reason}")
                 return redirect('user_portal:user_makereservation')
 
             # Process event types

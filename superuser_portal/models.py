@@ -45,12 +45,14 @@ class BlockedDate(models.Model):
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     start_date = models.DateField()
     end_date = models.DateField()
+    start_time = models.TimeField(default='00:00')
+    end_time = models.TimeField(default='23:59')
     reason = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.facility.name}: {self.start_date} to {self.end_date}"
+        return f"{self.facility.name}: {self.start_date} to {self.end_date} ({self.start_time}-{self.end_time})"
 
     class Meta:
         ordering = ['start_date']

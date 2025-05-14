@@ -25,6 +25,10 @@
                 <option value="{{ facility.id }}">{{ facility.name }}</option>
             {% endfor %}
         </select><br><br>
+        <label for="start_time">Start Time:</label><br>
+        <input type="time" id="start_time" name="start_time" required><br><br>
+        <label for="end_time">End Time:</label><br>
+        <input type="time" id="end_time" name="end_time" required><br><br>
         <label for="reason">Reason:</label><br>
         <textarea id="reason" name="reason" rows="4" style="width:100%" required></textarea><br><br>
         <button type="submit">Block</button>
@@ -117,6 +121,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 'date': $('#blockDate').val(),
                 'reason': $('#reason').val(),
                 'facility_id': $('#facility').val(),
+                'start_time': $('#start_time').val(),
+                'end_time': $('#end_time').val(),
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             success: function() {

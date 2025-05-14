@@ -693,8 +693,8 @@ def get_blocked_dates(request):
     for blocked_date in blocked_dates:
         events.append({
             'title': f"Blocked: {blocked_date.facility.name if blocked_date.facility else ''}",
-            'start': blocked_date.start_date.isoformat(),
-            'end': blocked_date.end_date.isoformat(),
+            'start': f"{blocked_date.start_date}T{blocked_date.start_time}",
+            'end': f"{blocked_date.end_date}T{blocked_date.end_time}",
             'backgroundColor': '#dc3545',
             'reason': blocked_date.reason,
         })
@@ -725,18 +725,21 @@ def add_blocked_date(request):
     from .models import Facility
     date = request.POST.get('date')
     reason = request.POST.get('reason')
-    facility_id = request.POST.get('facility_id')  # You may want to add this to your modal/form
+    facility_id = request.POST.get('facility_id')
+    start_time = request.POST.get('start_time')
+    end_time = request.POST.get('end_time')
     try:
-        if not (date and reason):
-            return JsonResponse({'error': 'Missing date or reason'}, status=400)
-        # For now, pick the first facility if not provided (for demo)
-        facility = Facility.objects.first() if not facility_id else Facility.objects.get(id=facility_id)
+        if not (date and reason and facility_id and start_time and end_time):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        facility = Facility.objects.get(id=facility_id)
         BlockedDate.objects.create(
             facility=facility,
             start_date=date,
             end_date=date,
             reason=reason,
-            created_by=request.user
+            created_by=request.user,
+            start_time=start_time,
+            end_time=end_time
         )
         return JsonResponse({'status': 'ok'})
     except Exception as e:
