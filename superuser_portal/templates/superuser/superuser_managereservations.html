@@ -165,15 +165,36 @@
         document.getElementById('billingDetails').innerHTML = billingHtml;
     }
 
-    function updatePassSection(pass) {
-        const passHtml = pass && pass.file_url ? `
-            <div class="file-section">
-                <a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>
-            </div>` :
-            `<div class="pending-section">Waiting for security pass...</div>`;
-        document.getElementById('passDetails').innerHTML = passHtml;
+   function updatePassSection(pass) {
+    let passHtml = '';
+    
+    if (pass) {
+        passHtml = '<div class="file-section">';
+        
+        // Show security pass file if it exists
+        if (pass.file_url) {
+            passHtml += `<a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
+        } else {
+            passHtml += `<div class="pending-section">No security pass uploaded yet.</div>`;
+        }
+        
+        // Show completed form if it exists
+        if (pass.completed_form_url) {
+            passHtml += `
+                <div class="completed-form-section">
+                    <h4>Completed Form from User</h4>
+                    <a href="${pass.completed_form_url}" class="file-link" target="_blank">View Completed Form</a>
+                </div>
+            `;
+        }
+        
+        passHtml += '</div>';
+    } else {
+        passHtml = `<div class="pending-section">Waiting for security pass...</div>`;
     }
-
+    
+    document.getElementById('passDetails').innerHTML = passHtml;
+}
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {

@@ -379,17 +379,6 @@ def my_reservations(request):
 
 
 
-@login_required
-def upload_completed_form(request, pk):
-    reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
-    if request.method == 'POST':
-        form = CompletedFormUploadForm(request.POST, request.FILES, instance=reservation)
-        if form.is_valid():
-            form.save()
-            return redirect('my_reservations')
-    else:
-        form = CompletedFormUploadForm(instance=reservation)
-    return render(request, 'user_portal/upload_completed_form.html', {'form': form})
 
 
 @login_required
@@ -417,30 +406,3 @@ def upload_receipt(request, reservation_id):
     
     return redirect('user_portal:user_myreservation')
 
-
-
-@login_required
-def upload_completed_form(request, reservation_id):
-    """Upload completed security pass form for a reservation"""
-    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
-    
-    if request.method == 'POST':
-        completed_form = request.FILES.get('completed_form')
-        
-        if completed_form:
-            # Save the completed form to the reservation
-            reservation.completed_form = completed_form
-            
-            # Update status to indicate the form was submitted
-            if reservation.status == 'Security Pass Issued':
-                reservation.status = 'Security Pass Completed'
-            elif reservation.status == 'Billing Uploaded':
-                # In case security pass was issued but status wasn't updated
-                reservation.status = 'Security Pass Completed'
-            
-            reservation.save()
-            messages.success(request, "Security pass form uploaded successfully.")
-        else:
-            messages.error(request, "No file was uploaded. Please try again.")
-    
-    return redirect('user_portal:my_reservations')

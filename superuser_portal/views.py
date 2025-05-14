@@ -14,6 +14,10 @@ from .forms import BillingForm, SecurityPassForm
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
+import logging
+import traceback
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
 
 
 def is_superuser(user):
@@ -444,21 +448,12 @@ def reject_reservation(request, reservation_id):
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
-from django.core.exceptions import ValidationError
-from .forms import BillingForm  # Assuming you have a BillingForm
 
 @user_passes_test(is_superuser)
 def upload_billing(request, reservation_id):
     """
     View function to handle uploading billing statements for reservations
     """
-    import logging
-    import traceback
-    from decimal import Decimal, InvalidOperation
-    from datetime import datetime
-    
     logger = logging.getLogger(__name__)
     
     try:

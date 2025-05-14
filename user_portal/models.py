@@ -62,6 +62,7 @@ class Reservation(models.Model):
     security_pass_pdf = models.FileField(upload_to='security_passes/', null=True, blank=True)
     completed_form = models.FileField(upload_to='completed_forms/', null=True, blank=True)
     security_pass_file = models.FileField(upload_to='security_passes/', null=True, blank=True)
+    completed_security_form = models.FileField(upload_to='completed_security_forms/', null=True, blank=True)
     
     # Timestamps
     updated_at = models.DateTimeField(auto_now=True)
