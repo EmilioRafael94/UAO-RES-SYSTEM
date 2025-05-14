@@ -47,7 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         title: event.title,
                         start: event.start,
                         end: event.end,
-                        backgroundColor: event.backgroundColor || '#dc3545'  // Blocked dates with default color
+                        backgroundColor: event.backgroundColor || '#dc3545',
+                        reason: event.reason  // Pass reason to use for tooltip and alert
                     }));
                     successCallback(events);
                 },
@@ -58,6 +59,44 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventColor: '#dc3545',
         eventDisplay: 'block',
+
+        eventDidMount: function(info) {
+            if (info.event.extendedProps.reason) {
+                const tooltip = document.createElement('div');
+                tooltip.innerText = info.event.extendedProps.reason;
+                tooltip.style.position = 'absolute';
+                tooltip.style.background = '#333';
+                tooltip.style.color = '#fff';
+                tooltip.style.padding = '5px 10px';
+                tooltip.style.borderRadius = '4px';
+                tooltip.style.fontSize = '14px';
+                tooltip.style.display = 'none';
+                tooltip.style.zIndex = '10001';
+
+                document.body.appendChild(tooltip);
+
+                info.el.addEventListener('mouseenter', function(e) {
+                    tooltip.style.left = e.pageX + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                    tooltip.style.display = 'block';
+                });
+
+                info.el.addEventListener('mousemove', function(e) {
+                    tooltip.style.left = e.pageX + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                });
+
+                info.el.addEventListener('mouseleave', function() {
+                    tooltip.style.display = 'none';
+                });
+            }
+        },
+
+        eventClick: function(info) {
+            if (info.event.extendedProps.reason) {
+                alert("Blocked by Superuser\nReason: " + info.event.extendedProps.reason);
+            }
+        }
     });
 
     calendar.render();

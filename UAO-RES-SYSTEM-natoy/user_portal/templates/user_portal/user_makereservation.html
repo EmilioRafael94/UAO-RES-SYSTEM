@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
 </head>
 <body>
- 
 
     <main class="user_makereservation-container">
         <h2>Reservation for the Use of the University Sports Facilities</h2>
@@ -39,7 +38,7 @@
             <!-- Reservation Information -->
             <div class="make_reservation-form-group">
                 <label for="date_reserved">Date Reserved</label>
-                <input type="date" id="date_reserved" name="date_reserved" required>
+                <input type="date" id="date_reserved" name="date_reserved" min="{{ today }}">
             </div>
 
             <div class="make_reservation-form-group">
@@ -154,13 +153,48 @@
         </form>
     </main>
 
-    <script>
-        document.querySelector('form').addEventListener('submit', function () {
-            const selected = [...document.querySelectorAll('input[name="facilities"]:checked')]
-                .map(cb => cb.value);
-            alert("Selected facilities: " + selected.join(", "));
-        });
+    <script>   
+    document.addEventListener("DOMContentLoaded", function () {
+        const blockedDates = [];
+        const blockedReasons = {};
+
+        // Fetch blocked dates and reasons from the server
+        fetch("{% url 'user_portal:get_blocked_dates_json' %}")
+            .then(response => response.json())
+            .then(data => {
+                console.log("Blocked dates fetched:", data); // Debug output
+                data.forEach(blockedDate => {
+                    blockedDates.push(blockedDate.date);
+                    blockedReasons[blockedDate.date] = blockedDate.reason;
+                });
+            })
+            .catch(error => console.log('Error fetching blocked dates:', error));
+
+        // Function to check if a selected date is blocked
+        function checkBlockedDate(selectedDate) {
+            const formattedDate = selectedDate.toISOString().split('T')[0]; // Convert to YYYY-MM-DD
+            console.log("Checking date:", formattedDate, "Blocked dates:", blockedDates); // Debug output
+            return blockedDates.includes(formattedDate);
+        }
+
+        // Add event listener to date input
+        const dateInput = document.getElementById("date");
+        if (dateInput) {
+            dateInput.addEventListener("change", function () {
+                const selectedDate = new Date(this.value);
+                if (isNaN(selectedDate)) return; // Invalid date handling
+
+                if (checkBlockedDate(selectedDate)) {
+                    const formattedDate = selectedDate.toISOString().split('T')[0];
+                    const reason = blockedReasons[formattedDate];
+                    alert(`The selected date is blocked and cannot be reserved. Reason: ${reason}`);
+                    this.value = ''; // Clear the field
+                }
+            });
+        }
+    });
     </script>
+
 </body>
 </html>
 {% endblock %}

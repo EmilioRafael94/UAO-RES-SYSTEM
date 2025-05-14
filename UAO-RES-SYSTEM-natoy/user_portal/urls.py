@@ -13,10 +13,12 @@ urlpatterns = [
     path('my-reservations/', views.user_myreservation, name='user_myreservation'),
     path('edit/<int:id>/', views.edit_reservation, name='edit_reservation'),
     path('delete/<int:id>/', views.delete_reservation, name='delete_reservation'),
-    path('get-reservations/', views.get_reservations, name='get_reservations'),
+    path('get_reservations/', views.get_reservations, name='get_reservations'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('upload-receipt/<int:reservation_id>/', views.upload_receipt, name='upload_receipt'),
     path('calendar/events/', views.get_reservations, name='get_reservations'),
+    path('get_blocked_dates_json/', views.get_blocked_dates_json, name='get_blocked_dates_json'),
+
     
     
     

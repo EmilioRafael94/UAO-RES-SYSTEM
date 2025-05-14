@@ -64,29 +64,61 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
+            document.addEventListener('DOMContentLoaded', function () {
         const calendarEl = document.getElementById('calendar');
         const tooltip = document.getElementById('tooltip');
-
-        const calendar = new FullCalendar.Calendar(calendarEl, {
+        
+        let calendar; // Define calendar in outer scope
+        
+        // Function to refresh calendar data
+        function refreshCalendar() {
+            if (calendar) {
+                calendar.refetchEvents();
+                console.log('Calendar events refreshed');
+            }
+        }
+        
+        // Create the calendar
+        calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             height: 'auto',
             events: function(info, successCallback, failureCallback) {
+                // Add timestamp to prevent caching
+                const timestamp = new Date().getTime();
+                
                 $.ajax({
-                    url: "{% url 'user_portal:get_reservations' %}",  // View must return both reservations and blocked dates
+                    url: `{% url 'user_portal:get_reservations' %}?_=${timestamp}`,
+                    type: 'GET',
+                    dataType: 'json',
+                    cache: false, // Disable caching
                     success: function(data) {
-                        console.log('Events Data:', data);  // Optional: debug logging
-                        const events = data.map(event => ({
-                            title: event.title,
-                            start: event.start,
-                            end: event.end,
-                            extendedProps: {
-                                event_type: event.event_type,
-                                user_name: event.user_name,  // Updated field to represent the representative
-                                organization: event.organization,
-                                reason: event.reason // for blocked dates
+                        console.log('Events Data received:', data.length, 'events');
+                        console.log('First few events:', data.slice(0, 3));
+                        
+                        // Format the events for the calendar
+                        const events = data.map(event => {
+                            const eventObject = {
+                                title: event.title,
+                                start: event.start,
+                                end: event.end,
+                                extendedProps: {
+                                    event_type: event.event_type,
+                                    user_name: event.user_name,
+                                    organization: event.organization,
+                                    reason: event.reason
+                                }
+                            };
+                            
+                            // Add visual distinction for blocked dates
+                            if (event.reason) {
+                                eventObject.backgroundColor = '#FF6B6B'; // Red color for blocked dates
+                                eventObject.borderColor = '#FF6B6B';
+                                eventObject.textColor = '#FFFFFF';
                             }
-                        }));
+                            
+                            return eventObject;
+                        });
+                        
                         successCallback(events);
                     },
                     error: function(err) {
@@ -97,7 +129,6 @@
             },
             eventDisplay: 'block',
             eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
-
             eventMouseEnter: function(info) {
                 const props = info.event.extendedProps;
 
@@ -109,7 +140,7 @@
                 } else {
                     tooltipContent += `<strong>Time:</strong> ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}<br>`;
                     tooltipContent += `<strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>`;
-                    tooltipContent += `<strong>Reserved By:</strong> ${props.user_name || 'Unknown'}<br>`;  <!-- Updated this line -->
+                    tooltipContent += `<strong>Reserved By:</strong> ${props.user_name || 'Unknown'}<br>`;
                     tooltipContent += `<strong>Organization:</strong> ${props.organization || 'Unknown'}`;
                 }
 
@@ -118,30 +149,27 @@
                 tooltip.style.left = (info.jsEvent.pageX + 10) + "px";
                 tooltip.style.top = (info.jsEvent.pageY + 10) + "px";
             },
-
             eventMouseLeave: function () {
                 tooltip.style.display = "none";
             },
-
             eventMouseMove: function (info) {
                 tooltip.style.left = (info.jsEvent.pageX + 15) + "px";
                 tooltip.style.top = (info.jsEvent.pageY + 15) + "px";
             },
-
             eventClick: function (info) {
                 const p = info.event.extendedProps;
                 if (p.reason) {
                     alert(`Blocked Date:\n\n${info.event.title}\nReason: ${p.reason}`);
                 } else {
                     const details = `
-Reservation Details:
---------------------
-Facility: ${info.event.title}
-Date: ${info.event.start.toLocaleDateString()}
-Time: ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}
-Event Type: ${p.event_type || 'N/A'}
-Reserved By: ${p.user_name || 'Unknown'}
-Organization: ${p.organization || 'Unknown'}
+    Reservation Details:
+    --------------------
+    Facility: ${info.event.title}
+    Date: ${info.event.start.toLocaleDateString()}
+    Time: ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}
+    Event Type: ${p.event_type || 'N/A'}
+    Reserved By: ${p.user_name || 'Unknown'}
+    Organization: ${p.organization || 'Unknown'}
                     `;
                     alert(details);
                 }
@@ -149,6 +177,28 @@ Organization: ${p.organization || 'Unknown'}
         });
 
         calendar.render();
+        
+        // Add refresh button to manually refresh the calendar
+        const calendarContainer = document.querySelector('.calendar-container');
+        if (calendarContainer) {
+            const refreshButton = document.createElement('button');
+            refreshButton.textContent = 'Refresh Calendar';
+            refreshButton.classList.add('refresh-button');
+            refreshButton.style.marginTop = '15px';
+            refreshButton.style.padding = '8px 16px';
+            refreshButton.style.backgroundColor = '#4CAF50';
+            refreshButton.style.color = 'white';
+            refreshButton.style.border = 'none';
+            refreshButton.style.borderRadius = '4px';
+            refreshButton.style.cursor = 'pointer';
+            
+            refreshButton.addEventListener('click', refreshCalendar);
+            
+            calendarContainer.appendChild(refreshButton);
+        }
+        
+        // Auto-refresh calendar every 60 seconds
+        setInterval(refreshCalendar, 60000);
     });
     </script>
 </body>
