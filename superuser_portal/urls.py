@@ -44,4 +44,10 @@ urlpatterns = [
     # Fixed URL patterns for consistency
     path('pass/<int:reservation_id>/', views.upload_security_pass, name='upload_security_pass'),
     path('billing/<int:reservation_id>/delete/', views.delete_billing, name='delete_billing'),
+    path('settings/', views.system_settings, name='system_settings'),
+    path('settings/blocked-dates/', views.get_blocked_dates, name='get_blocked_dates'),
+    path('settings/add-blocked-date/', views.add_blocked_date, name='add_blocked_date'),
+
+
+
 ]

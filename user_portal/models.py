@@ -53,6 +53,7 @@ class Reservation(models.Model):
     billing_file = models.FileField(upload_to='billing/', null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
 
     # User uploads proof of payment
     receipt_file = models.FileField(upload_to='receipts/', null=True, blank=True)
@@ -92,3 +93,16 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+class BlockedDate(models.Model):
+    date = models.DateField()
+    reason = models.TextField()
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='user_blockeddate_set'  # Add this line
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Blocked {self.date} - {self.reason}"

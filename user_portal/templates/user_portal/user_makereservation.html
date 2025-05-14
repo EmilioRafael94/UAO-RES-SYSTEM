@@ -11,13 +11,21 @@
     <title>User Dashboard</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+    <style>
+        #blocked-date-message {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
  
 
     <main class="user_makereservation-container">
         <h2>Reservation for the Use of the University Sports Facilities</h2>
-        <form method="POST">
+        <form method="POST" id="reservationForm">
             {% csrf_token %}
 
             <!-- Organization Information -->
@@ -55,6 +63,7 @@
             <div class="make_reservation-form-group">
                 <label for="date">Date of Actual Use</label>
                 <input type="date" id="date" name="date" required>
+                <div id="blocked-date-message"></div>
             </div>
 
             <div class="make_reservation-form-group">
@@ -152,17 +161,61 @@
             
 
             <div class="make_reservation-form-group">
-                <input type="submit" value="Submit">
+                <input type="submit" value="Submit" id="submitBtn">
             </div>
         </form>
     </main>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        document.querySelector('form').addEventListener('submit', function () {
-    const selected = [...document.querySelectorAll('input[name="facilities_needed"]:checked')]
-        .map(cb => cb.value);
-    alert("Selected facilities: " + selected.join(", "));
-});
+    $(document).ready(function() {
+        let blockedDates = {};
+        // Fetch all blocked dates and reasons
+        $.ajax({
+            url: '/settings/blocked-dates/',
+            method: 'GET',
+            success: function(data) {
+                data.forEach(function(event) {
+                    if (event.backgroundColor === '#dc3545') {
+                        let date = event.start.split('T')[0];
+                        blockedDates[date] = event.reason || 'Blocked';
+                    }
+                });
+                // Check on page load if date is pre-filled
+                checkBlocked($('#date').val());
+            }
+        });
+
+        function checkBlocked(selected) {
+            if (blockedDates[selected]) {
+                $('#blocked-date-message').text('This date is blocked. Reason: ' + blockedDates[selected]).show();
+                $('#submitBtn').prop('disabled', true);
+            } else {
+                $('#blocked-date-message').hide();
+                $('#submitBtn').prop('disabled', false);
+            }
+        }
+
+        $('#date').on('change', function() {
+            let selected = $(this).val();
+            checkBlocked(selected);
+        });
+
+        $('#reservationForm').on('submit', function(e) {
+            let selected = $('#date').val();
+            if (blockedDates[selected]) {
+                checkBlocked(selected);
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+
+    document.querySelector('form').addEventListener('submit', function () {
+        const selected = [...document.querySelectorAll('input[name="facilities_needed"]:checked')]
+            .map(cb => cb.value);
+        alert("Selected facilities: " + selected.join(", "));
+    });
     </script>
 </body>
 </html>

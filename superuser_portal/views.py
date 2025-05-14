@@ -18,6 +18,9 @@ import logging
 import traceback
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
+from django.views.decorators.http import require_POST
+
+
 
 
 def is_superuser(user):
@@ -678,3 +681,65 @@ def delete_billing(request, reservation_id):
         reservation.save()
         messages.success(request, 'Billing file deleted.')
     return redirect('superuser_portal:manage_reservations')
+
+
+@user_passes_test(lambda u: u.is_staff)
+def get_blocked_dates(request):
+    # Updated to match BlockedDate model
+    blocked_dates = BlockedDate.objects.all()
+
+    events = []
+
+    for blocked_date in blocked_dates:
+        events.append({
+            'title': f"Blocked: {blocked_date.facility.name if blocked_date.facility else ''}",
+            'start': blocked_date.start_date.isoformat(),
+            'end': blocked_date.end_date.isoformat(),
+            'backgroundColor': '#dc3545',
+            'reason': blocked_date.reason,
+        })
+
+    # Now add reservation events
+    reservations = Reservation.objects.all()
+
+    for reservation in reservations:
+        events.append({
+            'title': reservation.event_type or reservation.organization,
+            'start': f"{reservation.date}T{reservation.start_time}",
+            'end': f"{reservation.date}T{reservation.end_time}",
+            'backgroundColor': '#007bff',
+            'reason': reservation.reasons or '',
+        })
+
+    return JsonResponse(events, safe=False)
+
+
+
+logger = logging.getLogger(__name__)
+
+
+@require_POST
+@user_passes_test(lambda u: u.is_staff)
+def add_blocked_date(request):
+    # Updated to match BlockedDate model
+    from .models import Facility
+    date = request.POST.get('date')
+    reason = request.POST.get('reason')
+    facility_id = request.POST.get('facility_id')  # You may want to add this to your modal/form
+    try:
+        if not (date and reason):
+            return JsonResponse({'error': 'Missing date or reason'}, status=400)
+        # For now, pick the first facility if not provided (for demo)
+        facility = Facility.objects.first() if not facility_id else Facility.objects.get(id=facility_id)
+        BlockedDate.objects.create(
+            facility=facility,
+            start_date=date,
+            end_date=date,
+            reason=reason,
+            created_by=request.user
+        )
+        return JsonResponse({'status': 'ok'})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error creating blocked date: {e}")
+        return JsonResponse({'error': 'Server error'}, status=500)

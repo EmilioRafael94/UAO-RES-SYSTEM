@@ -40,22 +40,32 @@
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 height: 'auto',
-                events: "{% url 'user_portal:get_reservations' %}",  // Django view returning JSON
+                events: '/user/calendar-data/', // New endpoint for both reservations and blocked dates
 
                 eventColor: '#007BFF',
                 eventDisplay: 'block',
                 eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
 
+                eventDidMount: function(info) {
+                    if (info.event.backgroundColor === '#dc3545') {
+                        info.el.style.backgroundColor = '#dc3545';
+                        info.el.style.borderColor = '#dc3545';
+                    }
+                },
+
                 eventMouseEnter: function(info) {
                     const props = info.event.extendedProps;
-                    const tooltipContent = `
-                        <strong>${info.event.title}</strong><br>
-                        <strong>Date:</strong> ${info.event.start.toLocaleDateString()}<br>
-                        <strong>Time:</strong> ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}<br>
-                        <strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>
-                        <strong>Facilities:</strong> ${props.facilities_needed ? props.facilities_needed : 'None'}<br>
-                        <strong>Manpower:</strong> ${props.manpower_needed ? props.manpower_needed : 0}
-                    `;
+                    let tooltipContent = `<strong>${info.event.title}</strong><br>`;
+                    if (info.event.backgroundColor === '#dc3545') {
+                        tooltipContent += `<span style='color:#dc3545'><b>Blocked Date</b></span><br>`;
+                        tooltipContent += `<b>Reason:</b> ${props.reason || 'Blocked'}<br>`;
+                    } else {
+                        tooltipContent += `<strong>Date:</strong> ${info.event.start.toLocaleDateString()}<br>`;
+                        tooltipContent += `<strong>Time:</strong> ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}<br>`;
+                        tooltipContent += `<strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>`;
+                        tooltipContent += `<strong>Facilities:</strong> ${props.facilities_needed ? props.facilities_needed : 'None'}<br>`;
+                        tooltipContent += `<strong>Manpower:</strong> ${props.manpower_needed ? props.manpower_needed : 0}`;
+                    }
                     tooltip.innerHTML = tooltipContent;
                     tooltip.style.display = "block";
                     tooltip.style.left = (info.jsEvent.pageX + 10) + "px";
@@ -73,7 +83,10 @@
 
                 eventClick: function (info) {
                     const p = info.event.extendedProps;
-                    const details = `
+                    if (info.event.backgroundColor === '#dc3545') {
+                        alert(`Blocked Date\nReason: ${p.reason || 'Blocked'}`);
+                    } else {
+                        const details = `
 Reservation Details:
 --------------------
 Facility: ${info.event.title}
@@ -84,8 +97,9 @@ Facilities Needed: ${p.facilities_needed || 'None'}
 
 Manpower Breakdown:
 - Total Needed: ${p.manpower_needed || 0}
-                    `;
-                    alert(details);
+                        `;
+                        alert(details);
+                    }
                 }
             });
 

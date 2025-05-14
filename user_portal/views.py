@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from config import settings
 from user_portal.forms import UserUpdateForm, ProfileUpdateForm
 from user_portal.models import Reservation # Make sure you have these forms imported
 from django.contrib import messages
@@ -9,6 +10,8 @@ from django.http import HttpResponseNotFound, JsonResponse
 from .models import Notification
 from .models import Reservation
 from .forms import ReceiptUploadForm, CompletedFormUploadForm
+from superuser_portal.models import BlockedDate, Facility
+import datetime
 
 
 SAMPLE_RESERVATIONS = [
@@ -38,76 +41,128 @@ def user_myreservation(request):
 @login_required
 def user_makereservation(request):
     today = timezone.now().date()
+    facilities = Facility.objects.all()
 
     if request.method == 'POST':
-        # Collect data from the form
-        organization = request.POST.get('organization')
-        representative = request.POST.get('representative')
-        contact_number = request.POST.get('contact_number')
-        date_reserved = request.POST.get('date_reserved')
-        insider_count = request.POST.get('insider_count', 0)
-        outsider_count = request.POST.get('outsider_count', 0)
-        date = request.POST.get('date')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
-        reasons = request.POST.get('reasons', '').strip()
+        try:
+            # Extract form data
+            organization = request.POST.get('organization', '')
+            representative = request.POST.get('representative', '')
+            contact_number = request.POST.get('contact_number', '')
+            date_reserved = request.POST.get('date_reserved')
+            insider_count = int(request.POST.get('insider_count', 0) or 0)
+            outsider_count = int(request.POST.get('outsider_count', 0) or 0)
+            date = request.POST.get('date')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            reasons = request.POST.get('reasons', '').strip()
 
-        # Event Types
-        event_types = request.POST.getlist('event_type')
-        event_type = ', '.join(event_types) if event_types else 'Not specified'
+            # Validate the date
+            try:
+                if date_reserved:
+                    date_reserved = datetime.datetime.strptime(date_reserved, "%Y-%m-%d").date()
+                else:
+                    date_reserved = today
+                    
+                selected_date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+            except ValueError as e:
+                messages.error(request, f"Invalid date format: {str(e)}")
+                return redirect('user_portal:user_makereservation')
 
-        # Facility Use (Selected facilities)
-        facility_use_selected = request.POST.getlist('facilities_needed')
-        facility_use = ', '.join(facility_use_selected) if facility_use_selected else 'None'
+            # Check if the date is blocked
+            selected_facility = request.POST.getlist('facilities_needed')
+            blocked = None
+            if selected_facility:
+                blocked = BlockedDate.objects.filter(
+                    facility__name__in=selected_facility,
+                    start_date__lte=selected_date,
+                    end_date__gte=selected_date
+                ).first()
+            else:
+                blocked = BlockedDate.objects.filter(
+                    start_date__lte=selected_date,
+                    end_date__gte=selected_date
+                ).first()
+            if blocked:
+                messages.error(request, f"Selected date is blocked for {blocked.facility.name}. Reason: {blocked.reason}")
+                return redirect('user_portal:user_makereservation')
 
-        # Facilities Needed (with quantities)
-        facility_keys = [
-            'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
-            'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
-            'ceiling_fans', 'stand_fans', 'iwata_fans', 'stage_non_acrylic', 'digital_clock',
-            'others'
-        ]
-        facilities_needed = {
-            key.replace('_', ' ').title(): int(request.POST.get(f"{key}_quantity", 0)) 
-            for key in facility_keys 
-            if request.POST.get(f"{key}_quantity")
-        }
+            # Process event types
+            event_types = request.POST.getlist('event_type')
+            event_type = ', '.join(event_types) if event_types else 'Not specified'
 
-        # Manpower Needed
-        manpower_keys = [
-            'security', 'janitor', 'electrician', 'technician',
-            'assistant_technician', 'digital_clock_operator', 'plumber', 'other_manpower'
-        ]
-        manpower_needed = {
-            key.replace('_', ' ').title(): int(request.POST.get(f"{key}_quantity", 0)) 
-            for key in manpower_keys 
-            if request.POST.get(f"{key}_quantity")
-        }
+            # Process facility use
+            facility_use_selected = request.POST.getlist('facilities')
+            facility_use = ', '.join(facility_use_selected) if facility_use_selected else 'None'
 
-        # Save the reservation
-        reservation = Reservation.objects.create(
-            user=request.user,
-            organization=organization,
-            representative=representative,
-            contact_number=contact_number,
-            date_reserved=date_reserved,
-            date=date,
-            insider_count=insider_count,
-            outsider_count=outsider_count,
-            start_time=start_time,
-            end_time=end_time,
-            reasons=reasons,
-            facility_use=facility_use,  # Correct field for selected facilities
-            event_type=event_type,
-            facilities_needed=facilities_needed,
-            manpower_needed=manpower_needed,
-            status="Pending",
-        )
+            # Process facilities needed
+            facility_keys = [
+                'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
+                'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
+                'ceiling_fans', 'stand_fans', 'iwata_fans', 'stage_non_acrylic', 'digital_clock',
+                'others'
+            ]
+            facilities_needed = {}
+            for key in facility_keys:
+                quantity_key = f"{key}_quantity"
+                if quantity_key in request.POST and request.POST.get(quantity_key):
+                    try:
+                        quantity = int(request.POST.get(quantity_key))
+                        if quantity > 0:
+                            facilities_needed[key.replace('_', ' ').title()] = quantity
+                    except ValueError:
+                        pass  # Skip invalid entries
 
-        return redirect('user_portal:user_myreservation')
+            # Process manpower needed
+            manpower_keys = [
+                'security', 'janitor', 'electrician', 'technician',
+                'assistant_technician', 'digital_clock_operator', 'plumber', 'other_manpower'
+            ]
+            manpower_needed = {}
+            for key in manpower_keys:
+                quantity_key = f"{key}_quantity"
+                if quantity_key in request.POST and request.POST.get(quantity_key):
+                    try:
+                        quantity = int(request.POST.get(quantity_key))
+                        if quantity > 0:
+                            manpower_needed[key.replace('_', ' ').title()] = quantity
+                    except ValueError:
+                        pass  # Skip invalid entries
+
+            # Create and save the reservation
+            reservation = Reservation.objects.create(
+                user=request.user,
+                organization=organization,
+                representative=representative,
+                contact_number=contact_number,
+                date_reserved=date_reserved,
+                date=selected_date,
+                insider_count=insider_count,
+                outsider_count=outsider_count,
+                start_time=start_time,
+                end_time=end_time,
+                reasons=reasons,
+                facility_use=facility_use,
+                event_type=event_type,
+                facilities_needed=facilities_needed,
+                manpower_needed=manpower_needed,
+                status="Pending",
+            )
+            
+            # Log successful creation
+            print(f"Reservation created successfully. ID: {reservation.id}")
+            
+            messages.success(request, "Your reservation has been submitted successfully and is pending approval.")
+            return redirect('user_portal:user_myreservation')
+            
+        except Exception as e:
+            print(f"Error creating reservation: {str(e)}")
+            messages.error(request, f"An error occurred while submitting your reservation: {str(e)}")
+            return redirect('user_portal:user_makereservation')
 
     return render(request, 'user_portal/user_makereservation.html', {
         'today': today,
+        'facilities': facilities,
     })
 
 
@@ -146,6 +201,30 @@ def delete_reservation(request, id):
 
 def user_calendar(request):
     return render(request, 'user_portal/user_calendar.html')
+
+@login_required
+def user_calendar_data(request):
+    # Returns reservations and blocked dates for the logged-in user for calendar display
+    reservations = Reservation.objects.filter(user=request.user)
+    events = []
+    for r in reservations:
+        events.append({
+            'title': r.event_type or r.organization,
+            'start': f"{r.date}T{r.start_time}",
+            'end': f"{r.date}T{r.end_time}",
+            'backgroundColor': '#007bff',
+            'reason': r.reasons or '',
+        })
+    blocked = BlockedDate.objects.all()
+    for b in blocked:
+        events.append({
+            'title': f"Blocked: {b.facility.name}",
+            'start': b.start_date.isoformat(),
+            'end': b.end_date.isoformat(),
+            'backgroundColor': '#dc3545',
+            'reason': b.reason,
+        })
+    return JsonResponse(events, safe=False)
 
 @login_required
 def user_dashboard(request):
@@ -251,36 +330,68 @@ def update_profile(request):
 
 @login_required
 def get_reservations(request):
-    reservations = Reservation.objects.all()
+    """
+    Get all reservations and blocked dates for the calendar
+    Returns JSON formatted for FullCalendar
+    """
+    # Get all approved and pending reservations
+    reservations = Reservation.objects.filter(
+        status__in=["Approved", "Pending"]
+    ).order_by('-date_reserved')
     
-    events = []
-    for r in reservations:
-        # Convert facilities_needed to a string with quantities (assuming it's a dictionary)
-        facilities_list = []
-        if isinstance(r.facilities_needed, dict):
-            for facility, quantity in r.facilities_needed.items():
-                facilities_list.append(f"{facility}: {quantity}")
-        else:
-            facilities_list.append('None')
+    # Debug output to check reservation retrieval
+    print(f"Found {reservations.count()} reservations")
+    
+    # Get all blocked dates
+    blocked = BlockedDate.objects.all()
+    
+    reservation_events = []
+    for res in reservations:
+        try:
+            start_datetime = datetime.datetime.combine(res.date, res.start_time)
+            end_datetime = datetime.datetime.combine(res.date, res.end_time)
+            
+            # Apply timezone if needed
+            if settings.USE_TZ:
+                try:
+                    start_datetime = timezone.make_aware(start_datetime)
+                    end_datetime = timezone.make_aware(end_datetime)
+                except ValueError:  # Already timezone aware
+                    pass
+                
+            # Format facility use for title
+            title = res.facility_use if res.facility_use else "Facility Reservation"
+            
+            # Debug information
+            print(f"Processing reservation: {title} on {res.date} from {res.start_time} to {res.end_time}")
+            
+            reservation_events.append({
+                "title": title,
+                "start": start_datetime.isoformat(),
+                "end": end_datetime.isoformat(),
+                "event_type": res.event_type,
+                "user_name": res.representative,
+                "organization": res.organization,
+                "status": res.status  # Include status for color coding
+            })
+        except Exception as e:
+            print(f"Error processing reservation {res.id}: {str(e)}")
+            continue
 
-        # Convert manpower_needed to a string with quantities (assuming it's a dictionary)
-        manpower_list = []
-        if isinstance(r.manpower_needed, dict):
-            for manpower, quantity in r.manpower_needed.items():
-                manpower_list.append(f"{manpower}: {quantity}")
-        else:
-            manpower_list.append('None')
-
-        events.append({
-            'title': r.facility_use,  # assuming facility_use is a string
-            'start': f"{r.date}T{r.start_time}",
-            'end': f"{r.date}T{r.end_time}",
-            'event_type': r.event_type,
-            'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
-            'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
+    blocked_events = []
+    for block in blocked:
+        blocked_events.append({
+            "title": "Blocked by Administrator",
+            "start": block.date.isoformat(),
+            "end": block.date.isoformat(),
+            "reason": block.reason,
         })
+
+    # Combine events and return
+    all_events = reservation_events + blocked_events
+    print(f"Returning {len(all_events)} total events")
     
-    return JsonResponse(events, safe=False)
+    return JsonResponse(all_events, safe=False)
 
 @login_required
 def edit_profile(request):
@@ -405,4 +516,18 @@ def upload_receipt(request, reservation_id):
             messages.error(request, "No file was uploaded. Please try again.")
     
     return redirect('user_portal:user_myreservation')
+
+@login_required
+def get_blocked_dates_json(request):
+    """Return blocked dates as JSON for the frontend to consume"""
+    blocked_dates = BlockedDate.objects.all()
+    data = [
+        {
+            'date': block.date.isoformat(),
+            'reason': block.reason
+        }
+        for block in blocked_dates
+    ]
+    return JsonResponse(data, safe=False)
+
 
