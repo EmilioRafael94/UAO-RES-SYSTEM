@@ -69,24 +69,39 @@ def user_makereservation(request):
                 messages.error(request, f"Invalid date format: {str(e)}")
                 return redirect('user_portal:user_makereservation')
 
-            # Check if the date and time are blocked
+            # Check if the date and time are blocked for any selected facility
             selected_facility = request.POST.getlist('facilities_needed')
             blocked = None
+            # Convert start_time and end_time to time objects for comparison
+            try:
+                start_time_obj = datetime.datetime.strptime(start_time, '%H:%M').time()
+                end_time_obj = datetime.datetime.strptime(end_time, '%H:%M').time()
+            except Exception:
+                start_time_obj = start_time
+                end_time_obj = end_time
             if selected_facility:
-                blocked = BlockedDate.objects.filter(
-                    facility__name__in=selected_facility,
-                    start_date__lte=selected_date,
-                    end_date__gte=selected_date,
-                    start_time__lte=start_time,
-                    end_time__gte=end_time
-                ).first()
+                for fac in selected_facility:
+                    blocked_qs = BlockedDate.objects.filter(
+                        facility__name=fac,
+                        start_date__lte=selected_date,
+                        end_date__gte=selected_date
+                    )
+                    for block in blocked_qs:
+                        # Compare using time objects for robust overlap
+                        if not (end_time_obj <= block.start_time or start_time_obj >= block.end_time):
+                            blocked = block
+                            break
+                    if blocked:
+                        break
             else:
-                blocked = BlockedDate.objects.filter(
+                blocked_qs = BlockedDate.objects.filter(
                     start_date__lte=selected_date,
-                    end_date__gte=selected_date,
-                    start_time__lte=start_time,
-                    end_time__gte=end_time
-                ).first()
+                    end_date__gte=selected_date
+                )
+                for block in blocked_qs:
+                    if not (end_time_obj <= block.start_time or start_time_obj >= block.end_time):
+                        blocked = block
+                        break
             if blocked:
                 messages.error(request, f"Selected date and time is blocked for {blocked.facility.name}. Reason: {blocked.reason}")
                 return redirect('user_portal:user_makereservation')
@@ -223,8 +238,8 @@ def user_calendar_data(request):
     for b in blocked:
         events.append({
             'title': f"Blocked: {b.facility.name}",
-            'start': b.start_date.isoformat(),
-            'end': b.end_date.isoformat(),
+            'start': f"{b.start_date}T{b.start_time}",
+            'end': f"{b.end_date}T{b.end_time}",
             'backgroundColor': '#dc3545',
             'reason': b.reason,
         })
@@ -417,17 +432,6 @@ def edit_profile(request):
     }
     return render(request, 'user_profile.html', context)
 
-@login_required
-def user_profile(request):
-    user_form = UserUpdateForm(instance=request.user)
-    profile_form = ProfileUpdateForm(instance=request.user.profile)
-
-    context = {
-        'user_form': user_form,
-        'profile_form': profile_form,
-    }
-    return render(request, 'user_portal/user_profile.html', context)
-
 def send_notification(user, message):
     notification = Notification.objects.create(user=user, message=message)
     notification.save()
@@ -524,10 +528,14 @@ def upload_receipt(request, reservation_id):
 @login_required
 def get_blocked_dates_json(request):
     """Return blocked dates as JSON for the frontend to consume"""
-    blocked_dates = BlockedDate.objects.all()
+    blocked_dates = BlockedDate.objects.all().select_related('facility')
     data = [
         {
-            'date': block.date.isoformat(),
+            'date': block.start_date.isoformat(),
+            'end_date': block.end_date.isoformat(),
+            'start_time': block.start_time.strftime('%H:%M'),
+            'end_time': block.end_time.strftime('%H:%M'),
+            'facility': block.facility.name if block.facility else '',
             'reason': block.reason
         }
         for block in blocked_dates

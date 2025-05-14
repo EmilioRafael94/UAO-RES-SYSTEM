@@ -18,6 +18,11 @@
             margin-top: 5px;
             display: none;
         }
+        #fully-blocked-date-message {
+            color: #dc3545;
+            font-weight: bold;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -64,6 +69,7 @@
                 <label for="date">Date of Actual Use</label>
                 <input type="date" id="date" name="date" required>
                 <div id="blocked-date-message"></div>
+                <div id="fully-blocked-date-message"></div>
             </div>
 
             <div class="make_reservation-form-group">
@@ -169,52 +175,89 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
     $(document).ready(function() {
-        let blockedDates = {};
-        // Fetch all blocked dates and reasons
+        let blockedEvents = [];
+        // Fetch all blocked events (date, time, facility)
         $.ajax({
-            url: '/settings/blocked-dates/',
+            url: '/user_portal/get_blocked_dates_json/',
             method: 'GET',
             success: function(data) {
-                data.forEach(function(event) {
-                    if (event.backgroundColor === '#dc3545') {
-                        let date = event.start.split('T')[0];
-                        blockedDates[date] = event.reason || 'Blocked';
-                    }
-                });
-                // Check on page load if date is pre-filled
-                checkBlocked($('#date').val());
+                blockedEvents = data;
             }
         });
-
-        function checkBlocked(selected) {
-            if (blockedDates[selected]) {
-                $('#blocked-date-message').text('This date is blocked. Reason: ' + blockedDates[selected]).show();
+        function isBlocked(selected, start, end, facilities) {
+            if (!selected || !start || !end || !facilities.length) return false;
+            for (let event of blockedEvents) {
+                // Check if selected date is within block range
+                if (selected >= event.date && selected <= event.end_date) {
+                    for (let f of facilities) {
+                        if (event.facility === f) {
+                            // Check if selected time overlaps with block
+                            if (!(end <= event.start_time || start >= event.end_time)) {
+                                return event.reason || 'Blocked';
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        function isDateFullyBlocked(selected) {
+            // Returns reason if the date is fully blocked for any facility (start_time=00:00, end_time=23:59)
+            for (let event of blockedEvents) {
+                if (selected >= event.date && selected <= event.end_date) {
+                    if (event.start_time === '00:00' && (event.end_time === '23:59' || event.end_time === '24:00')) {
+                        return event.reason || 'This date is blocked';
+                    }
+                }
+            }
+            return false;
+        }
+        function checkBlocked() {
+            let selected = $('#date').val();
+            let start = $('#start_time').val();
+            let end = $('#end_time').val();
+            let facilities = [];
+            $('input[name="facilities_needed"]:checked').each(function() {
+                facilities.push($(this).val());
+            });
+            // Early prompt for fully blocked date
+            let fullReason = isDateFullyBlocked(selected);
+            if (fullReason) {
+                let dateText = selected ? new Date(selected).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'This date';
+                $('#fully-blocked-date-message').text(dateText + ' is blocked. Reason: ' + fullReason).show();
+            } else {
+                $('#fully-blocked-date-message').hide();
+            }
+            // Usual block check for time/facility
+            let reason = isBlocked(selected, start, end, facilities);
+            if (reason) {
+                $('#blocked-date-message').text('This date/time is blocked. Reason: ' + reason).show();
                 $('#submitBtn').prop('disabled', true);
             } else {
                 $('#blocked-date-message').hide();
                 $('#submitBtn').prop('disabled', false);
             }
         }
-
-        $('#date').on('change', function() {
-            let selected = $(this).val();
-            checkBlocked(selected);
-        });
-
+        $('#date, #start_time, #end_time').on('change', checkBlocked);
+        $('input[name="facilities_needed"]').on('change', checkBlocked);
         $('#reservationForm').on('submit', function(e) {
             let selected = $('#date').val();
-            if (blockedDates[selected]) {
-                checkBlocked(selected);
+            let start = $('#start_time').val();
+            let end = $('#end_time').val();
+            let facilities = [];
+            $('input[name="facilities_needed"]:checked').each(function() {
+                facilities.push($(this).val());
+            });
+            let reason = isBlocked(selected, start, end, facilities);
+            if (reason) {
+                $('#blocked-date-message').text('This date/time is blocked. Reason: ' + reason).show();
+                $('#submitBtn').prop('disabled', true);
                 e.preventDefault();
                 return false;
             }
         });
-    });
-
-    document.querySelector('form').addEventListener('submit', function () {
-        const selected = [...document.querySelectorAll('input[name="facilities_needed"]:checked')]
-            .map(cb => cb.value);
-        alert("Selected facilities: " + selected.join(", "));
+        // Also check on page load in case of pre-filled date
+        checkBlocked();
     });
     </script>
 </body>

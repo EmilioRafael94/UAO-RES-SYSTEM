@@ -19,16 +19,20 @@
     <h3>Block Date</h3>
     <form id="blockForm">
         <input type="hidden" id="blockDate" name="date">
-        <label for="facility">Facility:</label><br>
-        <select id="facility" name="facility_id" required>
+        <label for="facility">Facilities:</label><br>
+        <div id="facility-block-list">
             {% for facility in facilities %}
-                <option value="{{ facility.id }}">{{ facility.name }}</option>
+                <div class="facility-block-row" style="margin-bottom:8px;">
+                    <input type="checkbox" class="facility-checkbox" name="facility_ids" value="{{ facility.id }}">
+                    <span>{{ facility.name }}</span>
+                    <label style="margin-left:10px;">Start Time:</label>
+                    <input type="time" class="facility-start-time" name="start_time_{{ facility.id }}" style="width:110px;">
+                    <label style="margin-left:10px;">End Time:</label>
+                    <input type="time" class="facility-end-time" name="end_time_{{ facility.id }}" style="width:110px;">
+                </div>
             {% endfor %}
-        </select><br><br>
-        <label for="start_time">Start Time:</label><br>
-        <input type="time" id="start_time" name="start_time" required><br><br>
-        <label for="end_time">End Time:</label><br>
-        <input type="time" id="end_time" name="end_time" required><br><br>
+        </div>
+        <br>
         <label for="reason">Reason:</label><br>
         <textarea id="reason" name="reason" rows="4" style="width:100%" required></textarea><br><br>
         <button type="submit">Block</button>
@@ -114,17 +118,39 @@ document.addEventListener('DOMContentLoaded', function () {
     // Handle form submission for blocking dates
     document.getElementById('blockForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        let date = $('#blockDate').val();
+        let reason = $('#reason').val();
+        let facilities = [];
+        let data = {
+            'date': date,
+            'reason': reason,
+            'csrfmiddlewaretoken': '{{ csrf_token }}',
+            'blocks': []
+        };
+        $('#facility-block-list .facility-block-row').each(function() {
+            let checkbox = $(this).find('.facility-checkbox');
+            if (checkbox.is(':checked')) {
+                let facility_id = checkbox.val();
+                let start_time = $(this).find('.facility-start-time').val();
+                let end_time = $(this).find('.facility-end-time').val();
+                if (start_time && end_time) {
+                    data['blocks'].push({
+                        'facility_id': facility_id,
+                        'start_time': start_time,
+                        'end_time': end_time
+                    });
+                }
+            }
+        });
+        if (data['blocks'].length === 0) {
+            alert('Please select at least one facility and specify start/end time.');
+            return;
+        }
         $.ajax({
             type: 'POST',
             url: '{% url "superuser_portal:add_blocked_date" %}',
-            data: {
-                'date': $('#blockDate').val(),
-                'reason': $('#reason').val(),
-                'facility_id': $('#facility').val(),
-                'start_time': $('#start_time').val(),
-                'end_time': $('#end_time').val(),
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
+            data: JSON.stringify(data),
+            contentType: 'application/json',
             success: function() {
                 calendar.refetchEvents();
                 closeModal();

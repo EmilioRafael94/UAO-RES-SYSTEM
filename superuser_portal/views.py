@@ -147,7 +147,13 @@ def verify_pass(request, reservation_id):
 @login_required
 @user_passes_test(is_superuser)
 def system_settings(request):
-    facilities = Facility.objects.all().order_by('name')
+    # Only show unique facilities by name
+    facilities = []
+    seen = set()
+    for f in Facility.objects.all().order_by('name'):
+        if f.name not in seen:
+            facilities.append(f)
+            seen.add(f.name)
     time_templates = TimeSlotTemplate.objects.all().prefetch_related('slots')
     blocked_dates = BlockedDate.objects.all().select_related('facility')
     
@@ -685,7 +691,6 @@ def delete_billing(request, reservation_id):
 
 @user_passes_test(lambda u: u.is_staff)
 def get_blocked_dates(request):
-    # Updated to match BlockedDate model
     blocked_dates = BlockedDate.objects.all()
 
     events = []
@@ -719,30 +724,68 @@ logger = logging.getLogger(__name__)
 
 
 @require_POST
-@user_passes_test(lambda u: u.is_staff)
+@csrf_exempt
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def add_blocked_date(request):
-    # Updated to match BlockedDate model
-    from .models import Facility
-    date = request.POST.get('date')
-    reason = request.POST.get('reason')
-    facility_id = request.POST.get('facility_id')
-    start_time = request.POST.get('start_time')
-    end_time = request.POST.get('end_time')
+    import datetime as dt
     try:
-        if not (date and reason and facility_id and start_time and end_time):
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
-        facility = Facility.objects.get(id=facility_id)
-        BlockedDate.objects.create(
-            facility=facility,
-            start_date=date,
-            end_date=date,
-            reason=reason,
-            created_by=request.user,
-            start_time=start_time,
-            end_time=end_time
-        )
-        return JsonResponse({'status': 'ok'})
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+            date = data.get('date')
+            reason = data.get('reason')
+            blocks = data.get('blocks', [])
+            if not (date and reason and blocks):
+                return JsonResponse({'error': 'Missing required fields'}, status=400)
+            date_obj = dt.datetime.strptime(date, '%Y-%m-%d').date()
+            for block in blocks:
+                facility_id = block.get('facility_id')
+                start_time = block.get('start_time')
+                end_time = block.get('end_time')
+                if not (facility_id and start_time and end_time):
+                    continue
+                try:
+                    start_time_obj = dt.datetime.strptime(start_time, '%H:%M').time()
+                    end_time_obj = dt.datetime.strptime(end_time, '%H:%M').time()
+                except Exception as e:
+                    continue
+                facility = Facility.objects.get(id=facility_id)
+                BlockedDate.objects.create(
+                    facility=facility,
+                    start_date=date_obj,
+                    end_date=date_obj,
+                    reason=reason,
+                    created_by=request.user,
+                    start_time=start_time_obj,
+                    end_time=end_time_obj
+                )
+            return JsonResponse({'status': 'ok'})
+        else:
+            # fallback: legacy single-facility form
+            date = request.POST.get('date')
+            reason = request.POST.get('reason')
+            facility_id = request.POST.get('facility_id')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            if not (date and reason and facility_id and start_time and end_time):
+                return JsonResponse({'error': 'Missing required fields'}, status=400)
+            facility = Facility.objects.get(id=facility_id)
+            try:
+                start_time_obj = dt.datetime.strptime(start_time, '%H:%M').time()
+                end_time_obj = dt.datetime.strptime(end_time, '%H:%M').time()
+                date_obj = dt.datetime.strptime(date, '%Y-%m-%d').date()
+            except Exception as e:
+                return JsonResponse({'error': f'Invalid date/time format: {e}'}, status=400)
+            BlockedDate.objects.create(
+                facility=facility,
+                start_date=date_obj,
+                end_date=date_obj,
+                reason=reason,
+                created_by=request.user,
+                start_time=start_time_obj,
+                end_time=end_time_obj
+            )
+            return JsonResponse({'status': 'ok'})
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error creating blocked date: {e}")
-        return JsonResponse({'error': 'Server error'}, status=500)
+        return JsonResponse({'error': f'Server error: {e}'}, status=500)
