@@ -465,7 +465,7 @@ def upload_receipt(request, pk):
 
         if request.method == 'POST' and request.FILES.get('receipt_file'):
             reservation.receipt_file = request.FILES['receipt_file']
-            reservation.status = 'Payment Pending'  # Optional
+            reservation.status = 'Billing Uploaded'  # Set status here
             reservation.save()
             return redirect('user_portal:user_myreservation')
 
@@ -481,6 +481,7 @@ def upload_completed_form(request, reservation_id):
     if request.method == 'POST' and request.FILES.get('completed_form'):
         form_file = request.FILES['completed_form']
         reservation.completed_form = form_file
+        reservation.status = 'Security Pass Uploaded for Review'  # Set status here
         reservation.save()
         messages.success(request, "Completed form uploaded successfully.")
 
@@ -518,6 +519,7 @@ def upload_receipt(request, reservation_id):
         
         if receipt_file:
             reservation.receipt_file = receipt_file
+            reservation.status = 'Billing Uploaded'  # Set status here
             reservation.save()
             messages.success(request, "Payment receipt uploaded successfully. It will be reviewed shortly.")
         else:

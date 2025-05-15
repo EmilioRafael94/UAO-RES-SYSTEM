@@ -19,8 +19,7 @@ import traceback
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from django.views.decorators.http import require_POST
-
-
+from django.core.files.storage import default_storage
 
 
 def is_superuser(user):
@@ -143,6 +142,24 @@ def verify_pass(request, reservation_id):
         reservation.save()
         return redirect('superuser_portal:manage_reservations')
     return render(request, 'superuser/verify_pass.html', {'reservation': reservation})
+
+@login_required
+@user_passes_test(is_superuser)
+def verify_receipt(request, pk):
+    reservation = get_object_or_404(Reservation, pk=pk)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == "approve":
+            # Mark receipt as approved (customize as needed)
+            reservation.status = 'Payment Approved'
+            reservation.save()
+            messages.success(request, "Receipt approved.")
+        elif action == "reject":
+            reservation.receipt_file = None
+            reservation.save()
+            messages.warning(request, "Receipt rejected.")
+        return redirect('pending_reservations')
+    return render(request, 'superuser_portal/verify_receipt.html', {'reservation': reservation})
 
 @login_required
 @user_passes_test(is_superuser)
@@ -399,216 +416,6 @@ def reservation_details_json(request, reservation_id):
     """
     Return reservation details in JSON format including billing and security pass info
     """
-    reservation = get_object_or_404(Reservation, id=reservation_id)
-    
-    # Get billing information
-    billing_info = None
-    if reservation.billing_file:
-        try:
-            billing_info = {
-                'statement_url': reservation.billing_file.url,
-                'amount': float(reservation.amount) if reservation.amount else None,
-                'due_date': reservation.due_date.strftime('%Y-%m-%d') if hasattr(reservation.due_date, 'strftime') else str(reservation.due_date),
-                'status': 'issued'
-            }
-        except AttributeError:
-            # Handle case where due_date might be a string
-            billing_info = {
-                'statement_url': reservation.billing_file.url,
-                'amount': float(reservation.amount) if reservation.amount else None,
-                'due_date': str(reservation.due_date) if reservation.due_date else None,
-                'status': 'issued'
-            }
-    
-    # Get security pass information
-    pass_info = None
-    if reservation.security_pass_file:
-        pass_info = {
-            'file_url': reservation.security_pass_file.url,
-            'notes': reservation.security_pass_notes if hasattr(reservation, 'security_pass_notes') else '',
-            'status': 'uploaded'
-        }
-    
-    # Prepare the response data
-    data = {
-        'id': reservation.id,
-        'reference': reservation.security_pass_id,  # Using security_pass_id as reference
-        'status': reservation.status,
-        'billing': billing_info,
-        'pass': pass_info,
-    }
-    
-    return JsonResponse(data)
-
-@user_passes_test(is_superuser)
-def approve_reservation(request, pk):
-    reservation = get_object_or_404(Reservation, pk=pk)
-    reservation.status = "Approved"
-    reservation.save()
-    messages.success(request, "Reservation approved.")
-    return redirect('pending_reservations')
-
-@csrf_exempt  # optional if using @csrf_protect and CSRF token
-def reject_reservation(request, reservation_id):
-    if request.method == 'POST':
-        reservation = get_object_or_404(Reservation, id=reservation_id)
-        reservation.status = 'Rejected'
-        reservation.save()
-        return JsonResponse({'success': True})
-    return JsonResponse({'error': 'Invalid request'}, status=400)
-
-
-@user_passes_test(is_superuser)
-def upload_billing(request, reservation_id):
-    """
-    View function to handle uploading billing statements for reservations
-    """
-    logger = logging.getLogger(__name__)
-    
-    try:
-        reservation = get_object_or_404(Reservation, id=reservation_id)
-        
-        if request.method == 'POST':
-            try:
-                billing_file = request.FILES.get('billing_file')
-                amount = request.POST.get('amount')
-                due_date_str = request.POST.get('due_date')
-                
-                # Log received data for debugging (excluding file contents)
-                logger.debug(f"Received billing data - amount: {amount}, due_date: {due_date_str}, file: {billing_file.name if billing_file else None}")
-                
-                if not all([billing_file, amount, due_date_str]):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Missing required billing information.'
-                    }, status=400)
-                
-                # Update reservation billing fields directly
-                reservation.billing_file = billing_file
-                
-                # Convert amount to Decimal with proper error handling
-                try:
-                    reservation.amount = Decimal(amount)
-                except InvalidOperation:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': f'Invalid amount format: {amount}'
-                    }, status=400)
-                
-                # Convert due_date string to a proper date object
-                try:
-                    # Parse the date string from the form (YYYY-MM-DD format)
-                    reservation.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-                except ValueError:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': f'Invalid date format: {due_date_str}. Expected YYYY-MM-DD.'
-                    }, status=400)
-                
-                # Update status if needed
-                if reservation.status == 'Pending' or reservation.status == 'Approved':
-                    reservation.status = 'Billing Uploaded'
-                
-                reservation.save()
-                
-                logger.debug(f"Successfully saved billing for reservation {reservation_id}")
-                
-                # Return success response with billing info
-                return JsonResponse({
-                    'status': 'success',
-                    'billing': {
-                        'statement_url': reservation.billing_file.url,
-                        'amount': float(reservation.amount),
-                        'due_date': reservation.due_date.strftime('%Y-%m-%d'),
-                        'status': 'issued'
-                    }
-                })
-            except Exception as e:
-                error_msg = f"Error processing billing for reservation {reservation_id}: {str(e)}"
-                logger.error(f"{error_msg}\n{traceback.format_exc()}")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Server error: {str(e)}'
-                }, status=500)
-        
-        # Handle GET requests or other methods
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Invalid request method. Only POST is supported.'
-        }, status=405)
-        
-    except Exception as e:
-        error_msg = f"Unexpected error in upload_billing view: {str(e)}"
-        logger.error(f"{error_msg}\n{traceback.format_exc()}")
-        return JsonResponse({
-            'status': 'error',
-            'message': 'An unexpected error occurred.'
-        }, status=500)
-
-@user_passes_test(is_superuser)
-def verify_receipt(request, pk):
-    reservation = get_object_or_404(Reservation, pk=pk)
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == "approve":
-            messages.success(request, "Receipt approved.")
-        elif action == "reject":
-            reservation.receipt_file = None
-            reservation.save()
-            messages.warning(request, "Receipt rejected.")
-        return redirect('pending_reservations')
-    return render(request, 'superuser_portal/verify_receipt.html', {'reservation': reservation})
-
-@login_required
-def upload_security_pass(request, reservation_id):
-    """Upload security pass by the superuser"""
-    # Check if the user is a superuser
-    if not request.user.is_superuser:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Permission denied'
-        }, status=403)
-        
-    reservation = get_object_or_404(Reservation, id=reservation_id)
-
-    if request.method == 'POST':
-        pass_file = request.FILES.get('pass_file')
-
-        if pass_file:
-            # Save the file to the reservation
-            reservation.security_pass_pdf = pass_file
-            
-            # Update the reservation status - ensuring it moves to Security Pass Issued
-            if reservation.status in ['Payment Approved', 'Needs Security Pass', 'Billing Uploaded']:
-                reservation.status = 'Security Pass Issued'
-            
-            reservation.save()
-
-            # Return a proper JSON response
-            return JsonResponse({
-                'status': 'success',
-                'pass': {
-                    'file_url': reservation.security_pass_pdf.url,
-                    'status': 'uploaded'
-                },
-                'reservation_status': reservation.status
-            })
-        
-        return JsonResponse({
-            'status': 'error', 
-            'message': 'No file uploaded.'
-        })
-
-    # Handle GET requests or other methods
-    return JsonResponse({
-        'status': 'error', 
-        'message': 'Invalid request method. Only POST is supported.'
-    })
-
-def reservation_details_json(request, reservation_id):
-    """
-    Return reservation details in JSON format including billing and security pass info
-    """
     # Check if the user is a superuser
     if not request.user.is_superuser:
         return JsonResponse({
@@ -626,15 +433,16 @@ def reservation_details_json(request, reservation_id):
                 'statement_url': reservation.billing_file.url,
                 'amount': float(reservation.amount) if reservation.amount else None,
                 'due_date': reservation.due_date.strftime('%Y-%m-%d') if hasattr(reservation.due_date, 'strftime') else str(reservation.due_date),
-                'status': 'issued'
+                'status': 'issued',
+                'user_receipt_url': reservation.receipt_file.url if reservation.receipt_file else None
             }
         except AttributeError:
-            # Handle case where due_date might be a string
             billing_info = {
                 'statement_url': reservation.billing_file.url,
                 'amount': float(reservation.amount) if reservation.amount else None,
                 'due_date': str(reservation.due_date) if reservation.due_date else None,
-                'status': 'issued'
+                'status': 'issued',
+                'user_receipt_url': reservation.receipt_file.url if reservation.receipt_file else None
             }
     
     # Get security pass information
@@ -642,7 +450,8 @@ def reservation_details_json(request, reservation_id):
     if reservation.security_pass_pdf:
         pass_info = {
             'file_url': reservation.security_pass_pdf.url,
-            'status': 'uploaded'
+            'status': 'uploaded',
+            'completed_form_url': reservation.completed_form.url if reservation.completed_form else None
         }
         
         # Add completed form information if it exists
@@ -688,6 +497,97 @@ def delete_billing(request, reservation_id):
         messages.success(request, 'Billing file deleted.')
     return redirect('superuser_portal:manage_reservations')
 
+@login_required
+@user_passes_test(is_superuser)
+def delete_billing_file(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if reservation.billing_file:
+        reservation.billing_file.delete(save=False)
+        reservation.billing_file = None
+        reservation.amount = None
+        reservation.due_date = None
+        reservation.status = 'Needs Billing'
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'No billing file to delete.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def edit_billing_file(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        if not reservation.billing_file:
+            return JsonResponse({'error': 'No billing file to edit.'}, status=400)
+        billing_file = request.FILES.get('billing_file')
+        amount = request.POST.get('amount')
+        due_date_str = request.POST.get('due_date')
+        if not all([billing_file, amount, due_date_str]):
+            return JsonResponse({'error': 'Missing required fields.'}, status=400)
+        reservation.billing_file.delete(save=False)
+        reservation.billing_file = billing_file
+        try:
+            reservation.amount = Decimal(amount)
+        except InvalidOperation:
+            return JsonResponse({'error': 'Invalid amount format.'}, status=400)
+        try:
+            reservation.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'error': 'Invalid date format.'}, status=400)
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_security_pass(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if reservation.security_pass_pdf:
+        reservation.security_pass_pdf.delete(save=False)
+        reservation.security_pass_pdf = None
+        reservation.status = 'Needs Security Pass'
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'No security pass file to delete.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def edit_security_pass(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        if not reservation.security_pass_pdf:
+            return JsonResponse({'error': 'No security pass file to edit.'}, status=400)
+        pass_file = request.FILES.get('pass_file')
+        if not pass_file:
+            return JsonResponse({'error': 'No file uploaded.'}, status=400)
+        reservation.security_pass_pdf.delete(save=False)
+        reservation.security_pass_pdf = pass_file
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_user_receipt(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if reservation.receipt_file:
+        reservation.receipt_file.delete(save=False)
+        reservation.receipt_file = None
+        reservation.status = 'Billing Uploaded' if reservation.billing_file else 'Needs Billing'
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'No user receipt file to delete.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_user_completed_form(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if reservation.completed_form:
+        reservation.completed_form.delete(save=False)
+        reservation.completed_form = None
+        reservation.status = 'Processing' if reservation.security_pass_pdf else 'Needs Security Pass'
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'No user completed form to delete.'}, status=400)
 
 @user_passes_test(lambda u: u.is_staff)
 def get_blocked_dates(request):
@@ -789,3 +689,63 @@ def add_blocked_date(request):
         import logging
         logging.getLogger(__name__).error(f"Error creating blocked date: {e}")
         return JsonResponse({'error': f'Server error: {e}'}, status=500)
+
+@login_required
+@user_passes_test(is_superuser)
+def approve_security_pass(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    # Only allow approval if completed_form exists and status is correct
+    if reservation.security_pass_pdf and reservation.completed_form and reservation.status == 'Security Pass Uploaded for Review':
+        reservation.status = 'Complete'  # Superuser view
+        reservation.save()
+        # Also update user status to 'Approved' (if you have a user-facing status field, update it here)
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'Cannot approve. Either no file, no completed form, or wrong status.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def upload_billing(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        billing_file = request.FILES.get('billing_file')
+        amount = request.POST.get('amount')
+        due_date_str = request.POST.get('due_date')
+        if not all([billing_file, amount, due_date_str]):
+            return JsonResponse({'status': 'error', 'message': 'Missing required fields.'}, status=400)
+        try:
+            reservation.billing_file = billing_file
+            reservation.amount = Decimal(amount)
+            reservation.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+            reservation.status = 'Billing Uploaded'
+            reservation.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def upload_security_pass(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        pass_file = request.FILES.get('pass_file')
+        if not pass_file:
+            return JsonResponse({'status': 'error', 'message': 'No file uploaded.'}, status=400)
+        try:
+            reservation.security_pass_pdf = pass_file
+            reservation.status = 'Security Pass Uploaded for Review'
+            reservation.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request.'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def reject_reservation(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        reservation.status = 'Rejected'
+        reservation.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request.'}, status=400)

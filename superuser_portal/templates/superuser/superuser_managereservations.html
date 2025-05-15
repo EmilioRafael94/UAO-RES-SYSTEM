@@ -80,6 +80,11 @@
                 <input type="date" name="due_date" required>
                 <input type="hidden" name="reservation_id" id="billingReservationId">
                 <button type="submit">Upload Billing</button>
+                <button type="button" id="editBillingBtn" style="display:none;">Edit</button>
+                <button type="button" id="deleteBillingBtn" style="display:none;">Delete</button>
+                <button type="button" id="cancelBillingEditBtn" style="display:none;">Cancel</button>
+                <span id="billingWarning" style="color:red;display:none;">Billing already uploaded. Delete or edit to re-upload.</span>
+                <span id="billingFeedback" style="color:green;display:none;"></span>
             </form>
         </div>
 
@@ -94,7 +99,14 @@
                 <input type="file" name="pass_file" accept=".pdf,.doc,.docx,.jpg,.png" required>
                 <input type="hidden" name="reservation_id" id="passReservationId">
                 <button type="submit">Upload Security Pass</button>
+                <button type="button" id="editPassBtn" style="display:none;">Edit</button>
+                <button type="button" id="deletePassBtn" style="display:none;">Delete</button>
+                <button type="button" id="cancelPassEditBtn" style="display:none;">Cancel</button>
+                <span id="passWarning" style="color:red;display:none;">Security pass already uploaded. Delete or edit to re-upload.</span>
+                <span id="passFeedback" style="color:green;display:none;"></span>
             </form>
+            <div id="completedFormSection" style="margin-top:10px;"></div>
+            <button id="approvePassBtn" style="display:none; margin-top:10px;">Approve Reservation</button>
         </div>
     </div>
 </div>
@@ -128,6 +140,8 @@
         // Set form actions with correct paths
         document.getElementById('billingForm').action = `/superuser_portal/billing/${reservationId}/`;
         document.getElementById('passForm').action = `/superuser_portal/pass/${reservationId}/`;
+        document.getElementById('billingForm').setAttribute('data-mode', 'upload');
+        document.getElementById('passForm').setAttribute('data-mode', 'upload');
 
         // Set hidden form values
         document.getElementById('billingReservationId').value = reservationId;
@@ -140,6 +154,7 @@
         fetch(`/superuser_portal/reservation/${reservationId}/details/json/`)
             .then(response => response.json())
             .then(data => {
+                window.currentReservationStatus = data.status;
                 updateBillingSection(data.billing);
                 updatePassSection(data.pass);
             });
@@ -147,8 +162,19 @@
 
     function updateBillingSection(billing) {
         let billingHtml = '';
-        
-        // Check if a billing statement exists
+        const billingForm = document.getElementById('billingForm');
+        const editBtn = document.getElementById('editBillingBtn');
+        const deleteBtn = document.getElementById('deleteBillingBtn');
+        const cancelBtn = document.getElementById('cancelBillingEditBtn');
+        const warning = document.getElementById('billingWarning');
+        const feedback = document.getElementById('billingFeedback');
+        const fileInput = billingForm.querySelector('input[name="billing_file"]');
+        const amountInput = billingForm.querySelector('input[name="amount"]');
+        const dueDateInput = billingForm.querySelector('input[name="due_date"]');
+        const submitBtn = billingForm.querySelector('button[type="submit"]');
+
+        feedback.style.display = 'none';
+        cancelBtn.style.display = 'none';
         if (billing && billing.statement_url) {
             billingHtml = `
                 <div class="file-section">
@@ -158,43 +184,190 @@
                         <p>Due date: ${billing.due_date || 'N/A'}</p>
                     </div>
                 </div>`;
+            // Disable upload, show edit/delete
+            fileInput.disabled = true;
+            amountInput.disabled = true;
+            dueDateInput.disabled = true;
+            submitBtn.style.display = 'none';
+            editBtn.style.display = '';
+            deleteBtn.style.display = '';
+            warning.style.display = '';
+            document.getElementById('editBillingBtn').onclick = function() {
+                billingForm.action = `/superuser_portal/edit_billing_file/${currentReservationId}/`;
+                billingForm.setAttribute('data-mode', 'edit');
+                fileInput.disabled = false;
+                amountInput.disabled = false;
+                dueDateInput.disabled = false;
+                submitBtn.style.display = '';
+                this.style.display = 'none';
+                deleteBtn.style.display = 'none';
+                cancelBtn.style.display = '';
+            };
+            cancelBtn.onclick = function() {
+                viewReservationDetails(currentReservationId);
+            };
         } else {
             billingHtml = `<div class="pending-section">No billing statement uploaded yet.</div>`;
+            fileInput.disabled = false;
+            amountInput.disabled = false;
+            dueDateInput.disabled = false;
+            submitBtn.style.display = '';
+            editBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+            warning.style.display = 'none';
+            cancelBtn.style.display = 'none';
         }
-        
+        let userReceiptBtn = '';
+        if (billing && billing.user_receipt_url) {
+            userReceiptBtn = `<button type='button' id='deleteUserReceiptBtn' style='margin-left:10px;'>Delete User Payment Proof</button>`;
+        }
+        billingHtml += userReceiptBtn;
         document.getElementById('billingDetails').innerHTML = billingHtml;
+        updateRejectBtn(billing);
+        if (billing && billing.user_receipt_url) {
+            document.getElementById('deleteUserReceiptBtn').onclick = function() {
+                if (!confirm('Delete user payment proof?')) return;
+                fetchWithToken(`/superuser_portal/delete_user_receipt/${currentReservationId}/`, {method:'POST'})
+                .then(r=>r.json()).then(data=>{
+                    if(data.status==='success'){
+                        alert('User payment proof deleted.');
+                        setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
+                    }else{alert('Error: '+(data.error||'Unknown'));}
+                }).catch(()=>alert('Server error.'));
+            };
+        }
     }
 
-   function updatePassSection(pass) {
-    let passHtml = '';
-    
-    if (pass) {
-        passHtml = '<div class="file-section">';
-        
+    function updatePassSection(pass) {
+        let passHtml = '';
+        const passForm = document.getElementById('passForm');
+        const editBtn = document.getElementById('editPassBtn');
+        const deleteBtn = document.getElementById('deletePassBtn');
+        const cancelBtn = document.getElementById('cancelPassEditBtn');
+        const warning = document.getElementById('passWarning');
+        const feedback = document.getElementById('passFeedback');
+        const fileInput = passForm.querySelector('input[name="pass_file"]');
+        const submitBtn = passForm.querySelector('button[type="submit"]');
+        const approveBtn = document.getElementById('approvePassBtn');
+        const completedFormSection = document.getElementById('completedFormSection');
+
+        feedback.style.display = 'none';
+        cancelBtn.style.display = 'none';
         // Show security pass file if it exists
-        if (pass.file_url) {
-            passHtml += `<a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
+        if (pass && pass.file_url) {
+            passHtml = `<a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
+            fileInput.disabled = true;
+            submitBtn.style.display = 'none';
+            editBtn.style.display = '';
+            deleteBtn.style.display = '';
+            warning.style.display = '';
+            document.getElementById('editPassBtn').onclick = function() {
+                passForm.action = `/superuser_portal/edit_security_pass/${currentReservationId}/`;
+                passForm.setAttribute('data-mode', 'edit');
+                fileInput.disabled = false;
+                submitBtn.style.display = '';
+                this.style.display = 'none';
+                deleteBtn.style.display = 'none';
+                cancelBtn.style.display = '';
+            };
+            cancelBtn.onclick = function() {
+                viewReservationDetails(currentReservationId);
+            };
         } else {
-            passHtml += `<div class="pending-section">No security pass uploaded yet.</div>`;
+            passHtml = `<div class="pending-section">No security pass uploaded yet.</div>`;
+            fileInput.disabled = false;
+            submitBtn.style.display = '';
+            editBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+            warning.style.display = 'none';
+            approveBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
         }
-        
+        document.getElementById('passDetails').innerHTML = passHtml;
         // Show completed form if it exists
-        if (pass.completed_form_url) {
-            passHtml += `
-                <div class="completed-form-section">
-                    <h4>Completed Form from User</h4>
-                    <a href="${pass.completed_form_url}" class="file-link" target="_blank">View Completed Form</a>
-                </div>
-            `;
+        if (pass && pass.completed_form_url) {
+            completedFormSection.innerHTML = `<div class='completed-form-section'><h4>Completed Form from User</h4><a href='${pass.completed_form_url}' class='file-link' target='_blank'>View Completed Form</a></div>`;
+        } else {
+            completedFormSection.innerHTML = '';
         }
-        
-        passHtml += '</div>';
-    } else {
-        passHtml = `<div class="pending-section">Waiting for security pass...</div>`;
+        let userCompletedBtn = '';
+        if (pass && pass.completed_form_url) {
+            userCompletedBtn = `<button type='button' id='deleteUserCompletedBtn' style='margin-left:10px;'>Delete User Completed Form</button>`;
+        }
+        document.getElementById('completedFormSection').innerHTML += userCompletedBtn;
+        if (pass && pass.completed_form_url) {
+            document.getElementById('deleteUserCompletedBtn').onclick = function() {
+                if (!confirm('Delete user completed form?')) return;
+                fetchWithToken(`/superuser_portal/delete_user_completed_form/${currentReservationId}/`, {method:'POST'})
+                .then(r=>r.json()).then(data=>{
+                    if(data.status==='success'){
+                        alert('User completed form deleted.');
+                        setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
+                    }else{alert('Error: '+(data.error||'Unknown'));}
+                }).catch(()=>alert('Server error.'));
+            };
+        }
+        // Show Approve button only if completed_form_url exists and status is correct
+        if (pass && pass.completed_form_url && window.currentReservationStatus === 'Security Pass Uploaded for Review') {
+            approveBtn.style.display = '';
+        } else {
+            approveBtn.style.display = 'none';
+        }
     }
-    
-    document.getElementById('passDetails').innerHTML = passHtml;
-}
+
+    function updateRejectBtn(billing) {
+        const rejectBtn = document.getElementById('rejectBtn');
+        if (billing && billing.statement_url) {
+            rejectBtn.disabled = true;
+            rejectBtn.title = 'Cannot reject after billing is uploaded.';
+        } else {
+            rejectBtn.disabled = false;
+            rejectBtn.title = '';
+        }
+    }
+
+    // Edit/Delete/Cancel/Approve logic for billing and pass
+
+    document.getElementById('deleteBillingBtn').onclick = function() {
+        if (!confirm('Delete billing file?')) return;
+        fetchWithToken(`/superuser_portal/delete_billing_file/${currentReservationId}/`, {method:'POST'})
+        .then(r=>r.json()).then(data=>{
+            if(data.status==='success'){
+                document.getElementById('billingFeedback').textContent = 'File removed.';
+                document.getElementById('billingFeedback').style.display = '';
+                setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
+            }else{alert('Error: '+(data.error||'Unknown'));}
+        }).catch(()=>alert('Server error.'));
+    };
+    document.getElementById('deletePassBtn').onclick = function() {
+        if (!confirm('Delete security pass file?')) return;
+        fetchWithToken(`/superuser_portal/delete_security_pass/${currentReservationId}/`, {method:'POST'})
+        .then(r=>r.json()).then(data=>{
+            if(data.status==='success'){
+                document.getElementById('passFeedback').textContent = 'File removed.';
+                document.getElementById('passFeedback').style.display = '';
+                setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
+            }else{alert('Error: '+(data.error||'Unknown'));}
+        }).catch(()=>alert('Server error.'));
+    };
+    document.getElementById('approvePassBtn').onclick = function() {
+        if (!confirm('Approve this security pass and reservation?')) return;
+        fetchWithToken(`/superuser_portal/approve_security_pass/${currentReservationId}/`, {method:'POST'})
+        .then(r=>r.json()).then(data=>{
+            if(data.status==='success'){
+                alert('Reservation approved.');
+                viewReservationDetails(currentReservationId);
+            }else{alert('Error: '+(data.error||'Unknown'));}
+        }).catch(()=>alert('Server error.'));
+    };
+
+    document.getElementById('cancelBillingEditBtn').onclick = function() {
+        viewReservationDetails(currentReservationId);
+    };
+    document.getElementById('cancelPassEditBtn').onclick = function() {
+        viewReservationDetails(currentReservationId);
+    };
+
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -245,89 +418,73 @@
         const form = e.target;
         const formData = new FormData(form);
 
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = (form.getAttribute('data-mode') === 'edit') ? 'Saving...' : 'Uploading...';
+
         fetchWithToken(form.action, {
             method: 'POST',
             body: formData
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                alert('Security pass uploaded successfully.');
-                updatePassSection(data.pass);
+                document.getElementById('passFeedback').textContent = (form.getAttribute('data-mode') === 'edit') ? 'File updated.' : 'Security pass uploaded successfully.';
+                document.getElementById('passFeedback').style.display = '';
                 form.reset();  // Reset the form
-                
-                // Update the reservation status
-                if (data.reservation_status) {
-                    // If the page has a visible status indicator for this reservation
-                    const statusIndicators = document.querySelectorAll(`[data-reservation-id="${currentReservationId}"] .status-badge`);
-                    if (statusIndicators.length > 0) {
-                        statusIndicators.forEach(indicator => {
-                            indicator.textContent = data.reservation_status;
-                            // Update the class if needed
-                            indicator.className = `status-badge status-${data.reservation_status.toLowerCase().replace(/\s+/g, '-')}`;
-                        });
-                    }
-                }
+                setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
             } else {
                 alert('Failed to upload security pass: ' + (data.message || 'Unknown error.'));
             }
         })
         .catch(error => {
-            console.error('Upload error:', error);
-            alert('An error occurred while uploading the security pass.');
+            alert('An error occurred while uploading the security pass: ' + error.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Upload Security Pass';
+            form.setAttribute('data-mode', 'upload');
+            form.action = `/superuser_portal/pass/${currentReservationId}/`;
         });
     });
 
     // AJAX billing form submission
     document.getElementById('billingForm').addEventListener('submit', function (e) {
-    e.preventDefault(); // prevent default form submission
+        e.preventDefault(); // prevent default form submission
 
-    const form = e.target;
-    const formData = new FormData(form);
+        const form = e.target;
+        const formData = new FormData(form);
 
-    // Disable submit button to prevent multiple submissions
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading...';
+        // Disable submit button to prevent multiple submissions
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = (form.getAttribute('data-mode') === 'edit') ? 'Saving...' : 'Uploading...';
 
-    fetchWithToken(form.action, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        // Get the response content regardless of status code
-        return response.json().then(data => {
-            // Add the status code to the response data for easier handling
-            return { ...data, statusCode: response.status };
+        fetchWithToken(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('billingFeedback').textContent = (form.getAttribute('data-mode') === 'edit') ? 'File updated.' : 'Billing statement uploaded successfully.';
+                document.getElementById('billingFeedback').style.display = '';
+                form.reset();  // Reset the form
+                setTimeout(()=>{viewReservationDetails(currentReservationId);}, 800);
+            } else {
+                alert('Failed to upload billing statement: ' + (data.message || 'Unknown error.'));
+            }
+        })
+        .catch(error => {
+            alert('An error occurred while uploading the billing statement: ' + error.message);
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Upload Billing';
+            form.setAttribute('data-mode', 'upload');
+            form.action = `/superuser_portal/billing/${currentReservationId}/`;
         });
-    })
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Billing statement uploaded successfully.');
-            updateBillingSection(data.billing);
-            form.reset();  // Reset the form
-        } else {
-            // Show more detailed error message
-            const errorMessage = data.message || 'Unknown error';
-            console.error('Server error details:', data);
-            alert(`Failed to upload billing statement: ${errorMessage}`);
-        }
-    })
-    .catch(error => {
-        console.error('Upload error:', error);
-        alert('An error occurred while uploading the billing statement: ' + error.message);
-    })
-    .finally(() => {
-        // Re-enable the submit button regardless of outcome
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Upload Billing';
     });
-});
 
     closeBtn.onclick = function () {
         modal.style.display = 'none';
@@ -346,4 +503,10 @@
         document.getElementById('statusFilter').value = currentFilter;
     };
 </script>
+<style>
+#reservationModal .modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+</style>
 {% endblock %}

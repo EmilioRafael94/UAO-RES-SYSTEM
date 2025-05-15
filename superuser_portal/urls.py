@@ -33,21 +33,26 @@ urlpatterns = [
     path('user/<int:user_id>/update-status/', views.update_user_status, name='update_user_status'),
     
     path('pending/', views.pending_reservations, name='pending_reservations'),
-    path('approve/<int:pk>/', views.approve_reservation, name='approve_reservation'),
-    path('billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
     path('receipt/verify/<int:pk>/', views.verify_receipt, name='verify_receipt'),
     path('review-form/<int:pk>/', views.review_completed_form, name='review_completed_form'),
     path('reservation/<int:reservation_id>/details/', views.reservation_details, name='reservation_details'),
     path('reservation/<int:reservation_id>/details/json/', views.reservation_details_json, name='reservation_details_json'),
-    path('reservation/<int:reservation_id>/reject/', views.reject_reservation, name='reject_reservation'),
     
     # Fixed URL patterns for consistency
-    path('pass/<int:reservation_id>/', views.upload_security_pass, name='upload_security_pass'),
     path('billing/<int:reservation_id>/delete/', views.delete_billing, name='delete_billing'),
+    path('billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
+    path('pass/<int:reservation_id>/', views.upload_security_pass, name='upload_security_pass'),
+    path('reservation/<int:reservation_id>/reject/', views.reject_reservation, name='reject_reservation'),
     path('settings/', views.system_settings, name='system_settings'),
     path('settings/blocked-dates/', views.get_blocked_dates, name='get_blocked_dates'),
     path('settings/add-blocked-date/', views.add_blocked_date, name='add_blocked_date'),
 
-
-
+    # AJAX endpoints for billing and security pass actions
+    path('edit_billing_file/<int:reservation_id>/', views.edit_billing_file, name='edit_billing_file'),
+    path('delete_billing_file/<int:reservation_id>/', views.delete_billing_file, name='delete_billing_file'),
+    path('edit_security_pass/<int:reservation_id>/', views.edit_security_pass, name='edit_security_pass'),
+    path('delete_security_pass/<int:reservation_id>/', views.delete_security_pass, name='delete_security_pass'),
+    path('approve_security_pass/<int:reservation_id>/', views.approve_security_pass, name='approve_security_pass'),
+    path('delete_user_receipt/<int:reservation_id>/', views.delete_user_receipt, name='delete_user_receipt'),
+    path('delete_user_completed_form/<int:reservation_id>/', views.delete_user_completed_form, name='delete_user_completed_form'),
 ]
