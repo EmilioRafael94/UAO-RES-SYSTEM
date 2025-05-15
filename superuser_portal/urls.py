@@ -29,4 +29,8 @@ urlpatterns = [
     path('user/<int:user_id>/change-role/', views.change_user_role, name='change_user_role'),
     path('user/<int:user_id>/reset-password/', views.reset_user_password, name='reset_user_password'),
     path('user/<int:user_id>/update-status/', views.update_user_status, name='update_user_status'),
+    path('reservation/<int:reservation_id>/details/', views.reservation_details, name='reservation_details'),
+    path('upload-billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
+    path('upload_billing/<int:reservation_id>/', views.upload_billing_statement, name='upload_billing'),
+    path('verify_payment/<int:reservation_id>/', views.verify_payment, name='verify_payment'),
 ]

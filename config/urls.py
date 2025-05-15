@@ -22,9 +22,9 @@ from accounts.views import home_redirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('user/', include('user_portal.urls')),
+    path('user/', include('user_portal.urls')),  # Ensure user_portal is mapped correctly
     path('admin_portal/', include('admin_portal.urls')),
-    path('superuser_portal/', include('superuser_portal.urls')),    
+    path('superuser_portal/', include('superuser_portal.urls')),
     path('', home_redirect, name='home'),  # Default redirect after login
     path('accounts/', include('accounts.urls', namespace='accounts')),  
 ]

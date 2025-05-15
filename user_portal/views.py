@@ -7,6 +7,9 @@ from django.utils import timezone
 import json
 from django.http import JsonResponse
 from .models import Notification
+from django.contrib.auth.models import User
+from django.conf import settings
+import os
 
 
 SAMPLE_RESERVATIONS = [
@@ -231,28 +234,32 @@ def user_calendar(request):
 # USER DASHBOARD VIEW
 @login_required
 def user_dashboard(request):
-    user_reservations = Reservation.objects.filter(user=request.user)
+    user_reservations = Reservation.objects.filter(user=request.user).order_by('-date')
     
-    # Only show pending reservations that haven't been approved/rejected
+    # Group reservations by status
     pending_reservations = user_reservations.filter(status='Pending')
-    
-    # Only show approved reservations that are upcoming
-    upcoming_reservations = user_reservations.filter(
-        status='Approved',
-        date__gte=timezone.now().date()
-    ).order_by('date', 'start_time')
+    approved_reservations = user_reservations.filter(status='Admin Approved')
+    billing_uploaded = user_reservations.filter(status='Billing Uploaded')
+    payment_pending = user_reservations.filter(status='Payment Pending')
+    payment_approved = user_reservations.filter(status='Payment Approved')
+    security_pass = user_reservations.filter(status='Security Pass Issued')
+    completed = user_reservations.filter(status='Completed')
+    rejected = user_reservations.filter(status='Rejected')
     
     # Add formatted time to each reservation
-    for reservation in pending_reservations:
-        reservation.formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
-    
-    for reservation in upcoming_reservations:
+    for reservation in user_reservations:
         reservation.formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
     
     context = {
         'pending_reservations': pending_reservations,
-        'upcoming_reservations': upcoming_reservations,
-        'notifications': request.user.notifications.all(),
+        'approved_reservations': approved_reservations,
+        'billing_uploaded': billing_uploaded,
+        'payment_pending': payment_pending,
+        'payment_approved': payment_approved,
+        'security_pass': security_pass,
+        'completed': completed,
+        'rejected': rejected,
+        'all_reservations': user_reservations,
     }
     return render(request, 'user_portal/user_dashboard.html', context)
 
@@ -403,3 +410,120 @@ def update_reservation_status(request, reservation_id, status):
     send_notification(reservation.user, f"Your reservation for {reservation.facility} is now {status}.")
 
     return redirect('user_portal:user_myreservation')
+
+@login_required
+def upload_receipt(request, reservation_id):
+    """Upload payment receipt for a reservation"""
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    # Check if reservation is in the correct state for payment
+    if reservation.status != 'Billing Uploaded':
+        messages.error(request, "Cannot upload payment receipt. Billing statement must be uploaded first.")
+        return redirect('user_portal:user_myreservation')
+    
+    if request.method == 'POST':
+        receipt_file = request.FILES.get('payment_receipt')
+        
+        if receipt_file:
+            reservation.payment_receipt = receipt_file
+            reservation.status = 'Payment Pending'  # Ensure status is updated correctly
+            reservation.save()
+
+            # Save the receipt file in the appropriate directory
+            receipt_file_path = os.path.join(settings.MEDIA_ROOT, 'receipts', receipt_file.name)
+            with open(receipt_file_path, 'wb+') as destination:
+                for chunk in receipt_file.chunks():
+                    destination.write(chunk)
+            
+            # Create notification for superuser about payment upload
+            Notification.objects.create(
+                user=User.objects.filter(is_superuser=True).first(),  # Notify the first superuser
+                message=f"A payment receipt has been uploaded for reservation {reservation.id} at {reservation.facility_use} on {reservation.date}. Please verify the payment.",
+                notification_type='payment_uploaded'
+            )
+            
+            messages.success(request, "Payment receipt uploaded successfully. It will be reviewed shortly.")
+        else:
+            messages.error(request, "No file was uploaded. Please try again.")
+    
+    return redirect('user_portal:user_myreservation')
+
+@login_required
+def my_reservations(request):
+    """View all user reservations"""
+    reservations = Reservation.objects.filter(user=request.user).order_by('-date')
+    
+    # Process each reservation to show appropriate status and approval details
+    for reservation in reservations:
+        reservation.display_status = reservation.approval_status
+        reservation.approval_details = reservation.admin_approval_details
+        reservation.formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
+    
+    return render(request, 'user_portal/user_myreservation.html', {
+        'reservations': reservations
+    })
+
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from reservations.models import Reservation
+from django.views.decorators.http import require_POST
+
+@login_required
+@require_POST
+def upload_payment_receipt(request, reservation_id):
+    """
+    Handle the upload of payment receipt by the user
+    """
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+
+    if 'payment_receipt' not in request.FILES:
+        messages.error(request, "No file was uploaded. Please select a file.")
+        return redirect('user_portal:my_reservations')
+
+    try:
+        receipt_file = request.FILES['payment_receipt']
+        file_extension = receipt_file.name.split('.')[-1].lower()
+        allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf']
+
+        if file_extension not in allowed_extensions:
+            messages.error(request, "Invalid file type. Please upload an image or PDF file.")
+            return redirect('user_portal:my_reservations')
+
+        reservation.payment_receipt = receipt_file
+        reservation.status = 'Payment Uploaded'
+        reservation.save()
+
+        messages.success(request, "Payment receipt uploaded successfully! It will be reviewed shortly.")
+        return redirect('user_portal:my_reservations')
+
+    except Exception as e:
+        messages.error(request, f"Error uploading payment receipt: {str(e)}")
+        return redirect('user_portal:my_reservations')
+
+@login_required
+def dashboard(request):
+    """
+    Render the user dashboard.
+    """
+    return render(request, 'user_portal/dashboard.html')
+
+@login_required
+def profile(request):
+    """
+    Render the user profile page.
+    """
+    return render(request, 'user_portal/profile.html')
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from reservations.models import Reservation
+from .forms import ReservationForm
+
+@login_required
+def make_reservation(request):
+    """
+    Render the user make reservation page.
+    """
+    return render(request, 'user_portal/user_makereservation.html')

@@ -5,9 +5,16 @@ from django.utils import timezone
 from django.http import JsonResponse
 from reservations.models import Reservation
 from .models import Facility, TimeSlotTemplate, TimeSlot, BlockedDate
-from datetime import timedelta
+from datetime import timedelta, datetime
 import json
 from django.utils.crypto import get_random_string
+import logging
+from decimal import Decimal, InvalidOperation
+import traceback
+from user_portal.models import Notification
+from django.views.decorators.http import require_GET, require_POST
+from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
 
 def is_superuser(user):
     return user.is_superuser
@@ -38,69 +45,89 @@ def superuser_dashboard(request):
         'recent_activities': recent_activities
     }
     
-    return render(request, 'superuser/superuser_dashboard.html', context)
+    return render(request, 'superuser_portal/superuser_dashboard.html', context)
 
 @login_required
 @user_passes_test(is_superuser)
 def manage_reservations(request):
-    # Get filter parameter
     filter_type = request.GET.get('filter', 'all')
-    
-    # Base queryset
-    reservations = Reservation.objects.all()
-    
-    # Apply filters
+
+    # Filter reservations based on the selected filter type
     if filter_type == 'needs_billing':
-        reservations = reservations.filter(billing_statement__isnull=True)
+        reservations = Reservation.objects.filter(
+            status='Admin Approved'  # Only show reservations that have been approved by 4 admins
+        )
+
     elif filter_type == 'needs_payment':
-        reservations = reservations.filter(
-            billing_statement__isnull=False,
+        reservations = Reservation.objects.filter(
+            status='Billing Uploaded',
             payment_receipt__isnull=True
         )
+
     elif filter_type == 'needs_pass':
-        reservations = reservations.filter(
-            payment_receipt__isnull=False,
+        reservations = Reservation.objects.filter(
+            status='Payment Approved',
             security_pass__isnull=True
         )
-    
-    # Add metadata for each reservation
+
+    elif filter_type == 'today':
+        reservations = Reservation.objects.filter(
+            date_reserved=timezone.localdate()
+        )
+
+    elif filter_type == 'rejected':
+        reservations = Reservation.objects.filter(status='Rejected')
+
+    else:  # 'all' or unknown filter
+        reservations = Reservation.objects.all()
+
+    # Process reservations for display
     reservations_data = []
     for res in reservations:
-        status = 'Needs Billing'
-        if res.billing_statement:
+        # Default to 'Complete' if all requirements are met
+        if res.status == 'Rejected':
+            status = 'Rejected'
+        elif res.status == 'Admin Approved':
+            status = 'Needs Billing'
+        elif res.status == 'Billing Uploaded':
             status = 'Needs Payment Verification'
-        if res.payment_receipt:
+        elif res.status == 'Payment Approved':
             status = 'Needs Security Pass'
-        if res.security_pass:
-            status = 'Complete'
-            
+        else:
+            status = res.status
+
         reservations_data.append({
             'id': res.id,
             'reference': f'RES-{res.id:06d}',
-            'facility': res.facility,
+            'facility': res.facility_use,
             'date': res.date,
             'status': status,
             'has_billing': bool(res.billing_statement),
             'has_payment': bool(res.payment_receipt),
-            'has_pass': bool(res.security_pass)
+            'has_pass': bool(res.security_pass),
+            'receipt_file': res.payment_receipt
         })
-    
+
     context = {
         'reservations': reservations_data,
         'current_filter': filter_type
     }
-    
-    return render(request, 'superuser/superuser_managereservations.html', context)
+    return render(request, 'superuser_portal/superuser_managereservations.html', context)
 
 @login_required
 @user_passes_test(is_superuser)
 def verify_payment(request, reservation_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     if request.method == 'POST':
-        # Handle payment verification logic
-        reservation.payment_verified = True
-        reservation.save()
-        return redirect('superuser_portal:manage_reservations')
+        if reservation.payment_receipt:
+            reservation.status = 'Payment Approved'
+            reservation.save()
+            messages.success(request, 'Payment verified successfully.')
+        else:
+            messages.error(request, 'No payment receipt found to verify.')
+
+        return redirect('superuser_portal:superuser_dashboard')
+
     return render(request, 'superuser/verify_payment.html', {'reservation': reservation})
 
 @login_required
@@ -127,7 +154,7 @@ def system_settings(request):
         'blocked_dates': blocked_dates
     }
     
-    return render(request, 'superuser/superuser_systemsettings.html', context)
+    return render(request, 'superuser_portal/superuser_systemsettings.html', context)
 
 @login_required
 @user_passes_test(is_superuser)
@@ -254,7 +281,7 @@ def delete_blocked_date(request, date_id):
 @user_passes_test(is_superuser)
 def user_roles(request):
     users = User.objects.all().order_by('-date_joined')
-    return render(request, 'superuser/superuser_userroles.html', {'users': users})
+    return render(request, 'superuser_portal/superuser_userroles.html', {'users': users})
 
 @login_required
 @user_passes_test(is_superuser)
@@ -320,9 +347,189 @@ def update_user_status(request, user_id):
 @login_required
 @user_passes_test(is_superuser)
 def superuser_profile(request):
-    return render(request, 'superuser/superuser_profile.html')
+    return render(request, 'superuser_portal/superuser_profile.html')
 
 @login_required
 def dashboard(request):
     return render(request, 'dashboard.html')
+
+@login_required
+@user_passes_test(is_superuser)
+@csrf_exempt  # Only if you handle CSRF manually in JS
+def upload_billing(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST':
+        print(f"Received POST request for reservation ID: {reservation_id}")
+        print(f"Billing file: {request.FILES.get('billing_file')}")
+        print(f"Amount: {request.POST.get('amount')}, Due Date: {request.POST.get('due_date')}")
+
+        billing_file = request.FILES.get('billing_file')
+        amount = request.POST.get('amount')
+        due_date = request.POST.get('due_date')
+
+        if billing_file and amount and due_date:
+            reservation.billing_statement = billing_file
+            reservation.amount = amount
+            reservation.due_date = due_date
+            reservation.status = 'Billing Issued'  # Ensure status is updated correctly
+            reservation.save()
+            messages.success(request, 'Billing uploaded successfully.')
+        else:
+            messages.error(request, 'All fields are required to upload billing.')
+
+        return redirect('superuser_portal:superuser_dashboard')
+
+    return render(request, 'superuser/upload_billing.html', {'reservation': reservation})
+
+@login_required
+@user_passes_test(is_superuser)
+@require_GET
+def reservation_details(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    # Billing info
+    billing = {
+        'statement_url': reservation.billing_statement.url if reservation.billing_statement else None,
+        'can_upload': reservation.status == 'Admin Approved',
+        'amount': str(reservation.amount) if hasattr(reservation, 'amount') and reservation.amount else None,
+        'due_date': reservation.due_date.strftime('%Y-%m-%d') if hasattr(reservation, 'due_date') and reservation.due_date else None,
+    }
+    # Payment info
+    payment = {
+        'receipt_url': reservation.payment_receipt.url if reservation.payment_receipt else None,
+        'can_verify': reservation.status == 'Payment Pending',
+        'id': reservation.id,
+    }
+    # Security pass info
+    pass_info = {
+        'file_url': reservation.security_pass.url if reservation.security_pass else None,
+        'can_verify': reservation.status == 'Payment Approved',
+        'id': reservation.id,
+    }
+    return JsonResponse({
+        'billing': billing,
+        'payment': payment,
+        'pass': pass_info,
+        'status': reservation.status,
+    })
+
+@login_required
+@user_passes_test(is_superuser)
+@csrf_exempt  # Only if you handle CSRF manually in JS
+def upload_billing_statement(request, reservation_id):
+    """
+    Handle the upload of billing statement PDF by superuser
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    try:
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+
+        if 'billing_statement' not in request.FILES:
+            return JsonResponse({'success': False, 'error': 'No file uploaded'}, status=400)
+
+        # Save the billing statement to the reservation
+        billing_file = request.FILES['billing_statement']
+        reservation.billing_statement = billing_file
+        reservation.status = 'Billing Uploaded'  # Update status to reflect billing has been uploaded
+        reservation.save()
+
+        # Return success with the file URL
+        return JsonResponse({
+            'success': True, 
+            'file_url': reservation.billing_statement.url,
+            'message': 'Billing statement uploaded successfully'
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@user_passes_test(is_superuser)
+@require_POST
+def verify_payment(request, reservation_id):
+    """
+    Handle payment verification or rejection by superuser
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    try:
+        # Parse the JSON data from request body
+        data = json.loads(request.body)
+        action = data.get('action')
+
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+
+        if action == 'verify':
+            # Update reservation status
+            reservation.status = 'Payment Verified'
+            reservation.save()
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Payment verified successfully'
+            })
+
+        elif action == 'reject':
+            reason = data.get('reason', 'No reason provided')
+
+            # Update reservation status
+            reservation.status = 'Payment Rejected'
+            reservation.payment_rejection_reason = reason
+            reservation.save()
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Payment rejection processed'
+            })
+
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@user_passes_test(is_superuser)
+@require_GET
+def get_reservation_details(request, reservation_id):
+    """
+    Returns detailed information about a reservation in JSON format
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    try:
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+
+        # Prepare billing data
+        billing_data = {
+            'statement_url': reservation.billing_statement.url if reservation.billing_statement else None,
+        }
+
+        # Prepare payment data
+        payment_data = {
+            'id': reservation_id,  # Using reservation ID for payment operations
+            'receipt_url': reservation.payment_receipt.url if reservation.payment_receipt else None,
+            'verified': reservation.payment_verified,
+            'rejected': True if reservation.status == 'Payment Rejected' else False,
+            'rejection_reason': reservation.payment_rejection_reason if hasattr(reservation, 'payment_rejection_reason') else None
+        }
+
+        # Prepare security pass data (placeholder for now)
+        pass_data = {
+            'id': reservation_id,
+            'file_url': None,  # Update when you implement security pass
+        }
+
+        return JsonResponse({
+            'billing': billing_data,
+            'payment': payment_data,
+            'pass': pass_data,
+            'status': reservation.status
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 

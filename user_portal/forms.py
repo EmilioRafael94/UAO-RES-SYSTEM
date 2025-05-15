@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from user_portal.models import Profile
+from reservations.models import Reservation
 
 # User update form (for logged-in users to update their account info)
 class UserUpdateForm(forms.ModelForm):
@@ -63,4 +64,16 @@ class ProfileForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+
+
+# Reservation form (used for making reservations)
+class ReservationForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['organization', 'representative', 'date_reserved', 'date', 'start_time', 'end_time', 'facility_use', 'event_type']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'

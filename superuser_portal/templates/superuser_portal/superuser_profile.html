@@ -1,4 +1,4 @@
-{% extends 'superuser/base_superuser.html' %}
+{% extends 'superuser_portal/base_superuser.html' %}
 
 {% block title %}Superuser Profile{% endblock %}
 
@@ -32,6 +32,10 @@
             <div class="profile-actions">
                 <button onclick="showEditProfileModal()" class="edit-btn">Edit Profile</button>
                 <button onclick="showChangePasswordModal()" class="change-password-btn">Change Password</button>
+                <form action="{% url 'accounts:logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
             </div>
         </div>
     </div>
@@ -128,5 +132,9 @@
         }
         return true;
     };
+
+    function keepProfile() {
+        alert('Profile changes have been kept successfully!');
+    }
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends 'superuser/base_superuser.html' %}
+{% extends 'superuser_portal/base_superuser.html' %}
 
 {% block title %}Manage Reservations{% endblock %}
 
@@ -65,6 +65,9 @@
                 <h2>Reservation Details</h2>
             </div>
             <div class="modal-body">
+                <!-- Hidden field to store current reservation ID -->
+                <input type="hidden" id="current-reservation-id" value="">
+
                 <div class="steps-container">
                     <!-- Billing Section -->
                     <div class="step-section">
@@ -129,6 +132,7 @@
                 updateBillingSection(data.billing);
                 updatePaymentSection(data.payment);
                 updatePassSection(data.pass);
+                document.getElementById('current-reservation-id').value = reservationId; // Set reservation ID
             });
     }
 
@@ -150,19 +154,34 @@
     }
 
     function updatePaymentSection(payment) {
-        const paymentHtml = payment.receipt_url ?
-            `<div class="file-section">
-                <a href="${payment.receipt_url}" class="file-link" target="_blank">
-                    View Payment Receipt
-                </a>
-                <button onclick="verifyPayment(${payment.id})" class="verify-btn">
-                    Verify Payment
-                </button>
-            </div>` :
-            `<div class="pending-section">
-                Waiting for payment receipt...
-            </div>`;
-        
+        let paymentHtml = '';
+
+        if (payment.receipt_url) {
+            // Payment receipt has been uploaded by user
+            paymentHtml = `
+                <div class="receipt-section">
+                    <div class="receipt-preview">
+                        <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
+                            View Payment Receipt
+                        </a>
+                    </div>
+                    <div class="verification-actions mt-3">
+                        <button onclick="verifyPayment(${payment.id})" class="btn btn-success">
+                            <i class="fas fa-check-circle"></i> Verify Payment
+                        </button>
+                        <button onclick="rejectPayment(${payment.id})" class="btn btn-danger">
+                            <i class="fas fa-times-circle"></i> Reject
+                        </button>
+                    </div>
+                </div>`;
+        } else {
+            // No payment receipt uploaded yet
+            paymentHtml = `
+                <div class="waiting-message">
+                    Waiting for payment receipt...
+                </div>`;
+        }
+
         document.getElementById('paymentDetails').innerHTML = paymentHtml;
     }
 
@@ -181,6 +200,84 @@
             </div>`;
         
         document.getElementById('passDetails').innerHTML = passHtml;
+    }
+
+    function verifyPayment(paymentId) {
+        const reservationId = document.getElementById('current-reservation-id').value;
+
+        if (!confirm('Are you sure you want to verify this payment receipt?')) {
+            return;
+        }
+
+        fetchWithToken(`/superuser_portal/verify_payment/${reservationId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                payment_id: paymentId,
+                action: 'verify'
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('Payment verified successfully!');
+                // Reload details
+                viewReservationDetails(reservationId);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while verifying payment. Please try again.');
+        });
+    }
+
+    function rejectPayment(paymentId) {
+        const reservationId = document.getElementById('current-reservation-id').value;
+        const reason = prompt('Please provide a reason for rejecting this payment:');
+
+        if (reason === null) {
+            return; // User canceled the prompt
+        }
+
+        fetchWithToken(`/superuser_portal/verify_payment/${reservationId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                payment_id: paymentId,
+                action: 'reject',
+                reason: reason
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('Payment rejection processed successfully!');
+                // Update UI or reload details
+                viewReservationDetails(reservationId);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing payment rejection. Please try again.');
+        });
     }
 
     closeBtn.onclick = function() {
@@ -218,6 +315,47 @@
                 ...options.headers,
                 'X-CSRFToken': csrfToken,
             },
+        });
+    }
+
+    function uploadBilling(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        const reservationId = document.getElementById('current-reservation-id').value;
+        const fileInput = event.target.querySelector('input[type="file"]');
+
+        if (!fileInput.files[0]) {
+            alert('Please select a file to upload');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('billing_statement', fileInput.files[0]);
+        formData.append('reservation_id', reservationId);
+
+        fetchWithToken(`/superuser_portal/upload_billing/${reservationId}/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('Billing statement uploaded successfully!');
+                updateBillingSection({
+                    statement_url: data.file_url
+                });
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while uploading the billing statement. Please try again.');
         });
     }
 </script>

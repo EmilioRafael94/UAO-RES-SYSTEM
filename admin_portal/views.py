@@ -23,9 +23,9 @@ def admin_dashboard(request):
         if current_admin not in (res.admin_approvals or {}) and current_admin not in (res.admin_rejections or {})
     ]
 
-    # Recently Approved: current admin is in admin_approvals
-    approved_reservations = [
-        res for res in Reservation.objects.all().order_by('-date', '-created_at')
+    # Recently Approved: status is Admin Approved and approved by the current admin
+    recently_approved_reservations = [
+        res for res in Reservation.objects.filter(status='Admin Approved').order_by('-date', '-created_at')
         if current_admin in (res.admin_approvals or {})
     ][:10]
 
@@ -43,7 +43,7 @@ def admin_dashboard(request):
 
     context = {
         'pending': pending_reservations,
-        'approved': approved_reservations,
+        'approved': recently_approved_reservations,
         'rejected': rejected_reservations,
         'selected_reservation': selected_reservation,
         'pending_count': len(pending_reservations),
@@ -59,23 +59,15 @@ def approve_reservation(request, reservation_id):
         admin_notes = request.POST.get('admin_notes', '').strip()
         admin_username = request.user.username
 
-        # Add or update this admin's approval
-        approvals = reservation.admin_approvals or {}
-        approvals[admin_username] = admin_notes
-        reservation.admin_approvals = approvals
+        # Add admin approval
+        reservation.add_admin_approval(admin_username, admin_notes)
 
-        # If 4 unique admins have approved, set status to Approved
-        if len(approvals) >= 4:
-            reservation.status = 'Approved'
-        else:
-            reservation.status = 'Pending'
+        # Ensure the reservation status is updated to 'Admin Approved' if it meets the criteria
+        if len(reservation.admin_approvals) >= 4:
+            reservation.status = 'Admin Approved'
+            reservation.save()
 
-        # Optionally store the latest admin notes
-        if admin_notes:
-            reservation.admin_notes = admin_notes
-        reservation.save()
-
-        # Create notification for the user
+        # Create notification for the user about approval
         Notification.objects.create(
             user=reservation.user,
             message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been approved by {admin_username}. {admin_notes if admin_notes else ''}",
@@ -94,24 +86,21 @@ def reject_reservation(request, reservation_id):
         rejection_reason = request.POST.get('rejection_reason', '').strip()
         admin_username = request.user.username
 
-        # Add or update this admin's rejection
-        rejections = reservation.admin_rejections or {}
-        rejections[admin_username] = rejection_reason
-        reservation.admin_rejections = rejections
+        if not rejection_reason:
+            messages.error(request, "Please provide a reason for rejection.")
+            return redirect('admin_portal:admin_dashboard')
 
-        # Set status to Rejected if any admin rejects
-        reservation.status = 'Rejected'
-        reservation.rejection_reason = rejection_reason
-        reservation.save()
+        # Add admin rejection
+        reservation.add_admin_rejection(admin_username, rejection_reason)
 
-        # Create notification for the user
+        # Create notification for the user about rejection
         Notification.objects.create(
             user=reservation.user,
-            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been rejected by {admin_username}. Reason: {rejection_reason if rejection_reason else 'No reason provided'}",
+            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been rejected. Reason: {rejection_reason}",
             notification_type='reservation_rejected'
         )
         
-        messages.success(request, f"Reservation for {reservation.facility_use} rejected by {admin_username}.")
+        messages.success(request, f"Reservation for {reservation.facility_use} rejected.")
     return redirect('admin_portal:admin_dashboard')
 
 # Admin Calendar View
