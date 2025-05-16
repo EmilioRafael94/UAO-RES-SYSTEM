@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Calendar</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+    <!-- FullCalendar 5.11.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="navbar-left">
+        <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+        <span class="navbar-title">Xavier University Athletics Office</span>
+    </div>
+    <div class="navbar-right">
+        <a href="{% url 'admin_portal:admin_dashboard' %}" class="nav-link">Dashboard</a>
+        <a href="{% url 'admin_portal:calendar_view' %}" class="nav-link active">View Calendar</a>
+        <a href="{% url 'admin_portal:admin_profile' %}">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        </a>
+    </div>
+</div>
+
+<div class="calendar-container">
+    <h1>Facility Reservation Calendar</h1>
+    <div class="calendar-filters">
+        <select id="facility-filter">
+            <option value="all">All Facilities</option>
+            <option value="Gymnasium">Gymnasium</option>
+            <option value="Covered Court">Covered Court</option>
+            <option value="Football Field">Football Field</option>
+            <option value="Table Tennis Dug-out">Table Tennis Dug-out</option>
+        </select>
+        <select id="status-filter">
+            <option value="all">All Statuses</option>
+            <option value="Approved">Approved</option>
+            <option value="Pending">Pending</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+    </div>
+    <div id="calendar"></div>
+    <div id="tooltip" class="tooltip"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+        const tooltip = document.getElementById('tooltip');
+        const facilityFilter = document.getElementById('facility-filter');
+        const statusFilter = document.getElementById('status-filter');
+        
+        // Fetch all events initially
+        let allEvents = [];
+        
+        // Function to filter events based on selections
+        function filterEvents() {
+            const facilityValue = facilityFilter.value;
+            const statusValue = statusFilter.value;
+            
+            return allEvents.filter(event => {
+                // Filter by facility
+                if (facilityValue !== 'all' && event.title !== facilityValue) {
+                    return false;
+                }
+                
+                // Filter by status
+                if (statusValue !== 'all' && event.extendedProps.status !== statusValue) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // Initialize calendar
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            height: 'auto',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: function(info, successCallback, failureCallback) {
+                // Use the Django view URL to fetch events
+                fetch('{% url "admin_portal:get_all_reservations" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        allEvents = data;
+                        successCallback(filterEvents());
+                    })
+                    .catch(error => {
+                        console.error('Error fetching events:', error);
+                        failureCallback(error);
+                    });
+            },
+            eventDisplay: 'block',
+            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
+            
+            eventDidMount: function(info) {
+                // Color code events by status
+                if (info.event.extendedProps.status === 'Approved') {
+                    info.el.style.backgroundColor = '#28a745';  // Green
+                } else if (info.event.extendedProps.status === 'Pending') {
+                    info.el.style.backgroundColor = '#ffc107';  // Yellow
+                    info.el.style.color = '#000';
+                } else if (info.event.extendedProps.status === 'Rejected') {
+                    info.el.style.backgroundColor = '#dc3545';  // Red
+                }
+            },
+
+            eventMouseEnter: function(info) {
+                const props = info.event.extendedProps;
+                const tooltipContent = `
+                    <strong>${info.event.title}</strong><br>
+                    <strong>User:</strong> ${props.username}<br>
+                    <strong>Date:</strong> ${info.event.start.toLocaleDateString()}<br>
+                    <strong>Time:</strong> ${props.start_time} - ${props.end_time}<br>
+                    <strong>Organization:</strong> ${props.organization}<br>
+                    <strong>Status:</strong> ${props.status}<br>
+                    <strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>
+                `;
+                tooltip.innerHTML = tooltipContent;
+                tooltip.style.display = "block";
+                tooltip.style.left = (info.jsEvent.pageX + 10) + "px";
+                tooltip.style.top = (info.jsEvent.pageY + 10) + "px";
+            },
+
+            eventMouseLeave: function () {
+                tooltip.style.display = "none";
+            },
+
+            eventMouseMove: function (info) {
+                tooltip.style.left = (info.jsEvent.pageX + 15) + "px";
+                tooltip.style.top = (info.jsEvent.pageY + 15) + "px";
+            },
+
+            eventClick: function (info) {
+                // Redirect to dashboard with the selected reservation
+                window.location.href = `{% url 'admin_portal:admin_dashboard' %}?id=${info.event.extendedProps.id}`;
+            }
+        });
+
+        calendar.render();
+        
+        // Add event listeners to filters
+        facilityFilter.addEventListener('change', function() {
+            calendar.getEventSources()[0].refetch();
+        });
+        
+        statusFilter.addEventListener('change', function() {
+            calendar.getEventSources()[0].refetch();
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+<div class="container mt-5">
+    <h2 class="text-center mb-4">User Profile</h2>
+    <div class="card shadow rounded p-4">
+        <div class="row">
+            <div class="col-md-4 text-center">
+                {% if request.user.profile.profile_picture %}
+                    <img src="{{ request.user.profile.profile_picture.url }}" class="img-fluid rounded-circle" alt="Profile Picture" width="200">
+                {% else %}
+                    <img src="{% static 'default_profile.png' %}" class="img-fluid rounded-circle" alt="Default Profile" width="200">
+                {% endif %}
+                <h4 class="mt-3">{{ request.user.get_full_name }}</h4>
+                <p class="text-muted">{{ request.user.profile.role }}</p>
+            </div>
+
+            <div class="col-md-8">
+                <h5>Account Details</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Username:</strong> {{ request.user.username }}</li>
+                    <li class="list-group-item"><strong>Email:</strong> {{ request.user.email }}</li>
+                    <li class="list-group-item"><strong>Phone:</strong> {{ request.user.profile.phone }}</li>
+                    {% if request.user.profile.role == "Student of XU" %}
+                        <li class="list-group-item"><strong>Course:</strong> {{ request.user.profile.course }}</li>
+                    {% endif %}
+                </ul>
+
+                <button class="btn btn-primary mt-4" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+
+                <!-- Logout Form -->
+                <form action="{% url 'accounts:logout' %}" method="POST" class="mt-4">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data" action="{% url 'user_portal:update_profile' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            {{ user_form.email }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Phone</label>
+                            {{ profile_form.phone }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">First Name</label>
+                            {{ user_form.first_name }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            {{ user_form.last_name }}
+                        </div>
+
+                        {% if request.user.profile.role == "Student of XU" %}
+                        <div class="col-md-12">
+                            <label for="course" class="form-label">Course</label>
+                            {{ profile_form.course }}
+                        </div>
+                    {% endif %}
+
+                        <div class="col-md-12">
+                            <label for="profile_picture" class="form-label">Profile Picture</label>
+                            {{ profile_form.profile_picture }}
+                            {% if request.user.profile.profile_picture %}
+                                <img src="{{ request.user.profile.profile_picture.url }}" alt="Current Profile Picture" class="img-fluid mt-2" width="100">
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

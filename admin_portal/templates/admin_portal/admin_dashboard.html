@@ -1,0 +1,181 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="navbar-left">
+        <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+        <span class="navbar-title">Xavier University Athletics Office</span>
+    </div>
+    <div class="navbar-right">
+        <a href="{% url 'admin_portal:admin_dashboard' %}" class="nav-link">Dashboard</a>
+        <a href="{% url 'admin_portal:calendar_view' %}" class="nav-link">View Calendar</a>
+        <a href="{% url 'admin_portal:admin_profile' %}">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        </a>
+    </div>
+</div>
+
+<!-- Display messages -->
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="message {{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="dashboard-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Admin Dashboard</h2>
+
+        <div class="section">
+            <h3>Pending Reservations ({{ pending_count }})</h3>
+            <ul>
+                {% for reservation in pending %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No pending reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>Recently Approved</h3>
+            <ul>
+                {% for reservation in approved %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No approved reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>Recently Rejected</h3>
+            <ul>
+                {% for reservation in rejected %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No rejected reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% if selected_reservation %}
+        <div class="reservation-card">
+            <h2>Reservation Details</h2>
+            <p><strong>User:</strong> {{ selected_reservation.user.username }}</p>
+            <p><strong>Organization:</strong> {{ selected_reservation.organization|default:"N/A" }}</p>
+            <p><strong>Representative:</strong> {{ selected_reservation.representative|default:"N/A" }}</p>
+            <p><strong>Contact:</strong> {{ selected_reservation.contact_number|default:"N/A" }}</p>
+            <div class="card-content">
+                <p><strong>Facility:</strong> {{ selected_reservation.facility|default:"N/A" }}</p>
+                <p><strong>Date:</strong> {{ selected_reservation.date|default:"N/A" }}</p>
+                <p><strong>Time:</strong> {{ selected_reservation.start_time|default:"N/A" }} to {{ selected_reservation.end_time|default:"N/A" }}</p>
+                <p><strong>Status:</strong> 
+                    {% if selected_reservation.status == 'Pending' %}
+                        Pending ({{ selected_reservation.admin_approvals|length|default:0 }}/4)
+                    {% else %}
+                        {{ selected_reservation.status }}
+                    {% endif %}
+                </p>
+                <p><strong>Event Type:</strong> {{ selected_reservation.event_type|default:"N/A" }}</p>
+                <p><strong>Participants:</strong> {{ selected_reservation.insider_count }} (Insider), {{ selected_reservation.outsider_count }} (Outsider)</p>
+
+                {% if selected_reservation.facilities_needed %}
+                <p><strong>Facilities Needed:</strong></p>
+                <ul class="facilities-list">
+                    {% for facility, quantity in selected_reservation.facilities_needed.items %}
+                    <li>{{ facility }}: {{ quantity }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if selected_reservation.manpower_needed %}
+                <p><strong>Manpower Needed:</strong></p>
+                <ul class="manpower-list">
+                    {% for role, quantity in selected_reservation.manpower_needed.items %}
+                    <li>{{ role }}: {{ quantity }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if selected_reservation.reasons %}
+                <p><strong>Reasons:</strong> {{ selected_reservation.reasons }}</p>
+                {% endif %}
+
+                <h4>Admin Approvals</h4>
+                <ul>
+                    {% for admin, note in selected_reservation.admin_approvals.items %}
+                        <li><strong>{{ admin }}</strong>{% if note %}: {{ note }}{% endif %}</li>
+                    {% empty %}
+                        <li>No approvals yet.</li>
+                    {% endfor %}
+                </ul>
+                <h4>Admin Rejections</h4>
+                <ul>
+                    {% for admin, reason in selected_reservation.admin_rejections.items %}
+                        <li><strong>{{ admin }}</strong>{% if reason %}: {{ reason }}{% endif %}</li>
+                    {% empty %}
+                        <li>No rejections yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {% if selected_reservation.status == 'Pending' and user.username not in selected_reservation.admin_approvals and user.username not in selected_reservation.admin_rejections %}
+            <div class="action-buttons">
+                <form method="POST" action="{% url 'admin_portal:approve_reservation' selected_reservation.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="admin_notes">Admin Notes (Optional):</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3" placeholder="Add any notes or instructions for the user..."></textarea>
+                    </div>
+                    <button type="submit" class="approve">APPROVE</button>
+                </form>
+                <form method="POST" action="{% url 'admin_portal:reject_reservation' selected_reservation.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="rejection_reason">Rejection Reason (Required):</label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required placeholder="Please provide a reason for rejection..."></textarea>
+                    </div>
+                    <button type="submit" class="reject">REJECT</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="no-selection">
+            <p>Select a reservation from the sidebar to view details.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>
