@@ -156,6 +156,11 @@ def user_makereservation(request):
 @login_required
 def edit_reservation(request, id):
     reservation = get_object_or_404(Reservation, pk=id)
+    
+    # Prevent editing if reservation is completed
+    if reservation.status == 'Completed':
+        messages.error(request, "Cannot edit a completed reservation.")
+        return redirect('user_portal:user_myreservation')
 
     if request.method == 'POST':
         reservation.date = request.POST.get('date')
@@ -237,13 +242,8 @@ def user_dashboard(request):
     user_reservations = Reservation.objects.filter(user=request.user).order_by('-date')
     
     # Group reservations by status
-    pending_reservations = user_reservations.filter(status='Pending')
-    approved_reservations = user_reservations.filter(status='Admin Approved')
-    billing_uploaded = user_reservations.filter(status='Billing Uploaded')
-    payment_pending = user_reservations.filter(status='Payment Pending')
-    payment_approved = user_reservations.filter(status='Payment Approved')
-    security_pass = user_reservations.filter(status='Security Pass Issued')
-    completed = user_reservations.filter(status='Completed')
+    pending_reservations = user_reservations.filter(status__in=['Pending', 'Admin Approved', 'Billing Uploaded', 'Payment Pending', 'Payment Approved', 'Security Pass Issued'])
+    approved_reservations = user_reservations.filter(status='Completed')  # Only completed reservations with confirmed security pass
     rejected = user_reservations.filter(status='Rejected')
     
     # Add formatted time to each reservation
@@ -253,11 +253,6 @@ def user_dashboard(request):
     context = {
         'pending_reservations': pending_reservations,
         'approved_reservations': approved_reservations,
-        'billing_uploaded': billing_uploaded,
-        'payment_pending': payment_pending,
-        'payment_approved': payment_approved,
-        'security_pass': security_pass,
-        'completed': completed,
         'rejected': rejected,
         'all_reservations': user_reservations,
     }
@@ -322,8 +317,8 @@ def update_profile(request):
 
 @login_required
 def get_reservations(request):
-    # Only get approved reservations for the calendar
-    reservations = Reservation.objects.filter(status='Approved')
+    # Only get completed reservations for the calendar
+    reservations = Reservation.objects.filter(status='Completed')
     
     events = []
     for r in reservations:
@@ -350,6 +345,7 @@ def get_reservations(request):
             'event_type': r.event_type,
             'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
             'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
+            'status': r.status,
         })
     
     return JsonResponse(events, safe=False)
@@ -415,6 +411,11 @@ def update_reservation_status(request, reservation_id, status):
 def upload_receipt(request, reservation_id):
     """Upload payment receipt for a reservation"""
     reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    # Prevent uploading if reservation is completed
+    if reservation.status == 'Completed':
+        messages.error(request, "Cannot upload payment receipt for a completed reservation.")
+        return redirect('user_portal:user_myreservation')
     
     # Check if reservation is in the correct state for payment
     if reservation.status != 'Billing Uploaded':
@@ -527,3 +528,34 @@ def make_reservation(request):
     Render the user make reservation page.
     """
     return render(request, 'user_portal/user_makereservation.html')
+
+@login_required
+def upload_security_pass(request, reservation_id):
+    reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+    
+    # Prevent uploading if reservation is completed
+    if reservation.status == 'Completed':
+        messages.error(request, "Cannot upload security pass for a completed reservation.")
+        return redirect('user_portal:user_myreservation')
+        
+    if reservation.status != 'Security Pass Issued':
+        messages.error(request, "Cannot upload security pass. Security pass must be issued by the superuser first.")
+        return redirect('user_portal:user_myreservation')
+    if request.method == 'POST':
+        pass_file = request.FILES.get('security_pass_returned')
+        if pass_file:
+            reservation.security_pass_returned = pass_file
+            reservation.security_pass_status = 'Pending'
+            reservation.save()
+            
+            # Create notification for superuser about security pass upload
+            Notification.objects.create(
+                user=User.objects.filter(is_superuser=True).first(),
+                message=f"A security pass has been uploaded for reservation {reservation.id} at {reservation.facility_use} on {reservation.date}. Please verify the security pass.",
+                notification_type='security_pass_uploaded'
+            )
+            
+            messages.success(request, "Security pass uploaded successfully. Awaiting confirmation.")
+        else:
+            messages.error(request, "No file was uploaded. Please try again.")
+    return redirect('user_portal:user_myreservation')

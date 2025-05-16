@@ -12,6 +12,7 @@ urlpatterns = [
     path('reservations/edit/<int:id>/', views.edit_reservation, name='edit_reservation'),
     path('reservations/delete/<int:id>/', views.delete_reservation, name='delete_reservation'),
     path('reservations/upload-receipt/<int:reservation_id>/', views.upload_receipt, name='upload_receipt'),
+    path('reservations/upload-security-pass/<int:reservation_id>/', views.upload_security_pass, name='upload_security_pass'),
     path('calendar/events/', views.get_user_calendar_events, name='get_user_calendar_events'),
     path('profile/update/', views.update_profile, name='update_profile'),
     path('reservations/get/', views.get_reservations, name='get_reservations'),

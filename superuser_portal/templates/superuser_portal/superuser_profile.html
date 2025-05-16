@@ -3,50 +3,78 @@
 {% block title %}Superuser Profile{% endblock %}
 
 {% block content %}
-    <div class="profile-container">
-        <div class="profile-section">
-            <h2>Profile Information</h2>
-            <div class="profile-info">
-                <div class="info-item">
-                    <label>Username:</label>
-                    <span>{{ user.username }}</span>
+<div class="profile-container">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-avatar-section">
+                <div class="avatar-container">
+                    <img src="/static/superuser_portal/profile_icon.png" alt="Profile Icon" class="profile-avatar">
                 </div>
-                <div class="info-item">
-                    <label>Email:</label>
-                    <span>{{ user.email }}</span>
+                <div class="profile-title">
+                    <h2 class="profile-username">{{ user.username }}</h2>
+                    <span class="profile-role">Superuser</span>
                 </div>
-                <div class="info-item">
+            </div>
+        </div>
+        
+        <div class="profile-divider"></div>
+        
+        <div class="profile-info-list">
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-user"></i></div>
+                <div class="info-content">
                     <label>First Name:</label>
                     <span>{{ user.first_name }}</span>
                 </div>
-                <div class="info-item">
+            </div>
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-user"></i></div>
+                <div class="info-content">
                     <label>Last Name:</label>
                     <span>{{ user.last_name }}</span>
                 </div>
-                <div class="info-item">
-                    <label>Role:</label>
-                    <span>Superuser</span>
+            </div>
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                <div class="info-content">
+                    <label>Email:</label>
+                    <span>{{ user.email }}</span>
                 </div>
             </div>
-
-            <div class="profile-actions">
-                <button onclick="showEditProfileModal()" class="edit-btn">Edit Profile</button>
-                <button onclick="showChangePasswordModal()" class="change-password-btn">Change Password</button>
-                <form action="{% url 'accounts:logout' %}" method="post">
+        </div>
+        
+        <div class="profile-divider"></div>
+        
+        <div class="profile-actions">
+            <div class="action-row">
+                <button onclick="showEditProfileModal()" class="action-btn edit-btn">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+                <button onclick="showChangePasswordModal()" class="action-btn change-password-btn">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+            <div class="action-row logout-row">
+                <form action="{% url 'accounts:logout' %}" method="post" style="width:100%;">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Logout</button>
+                    <button type="submit" class="action-btn logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
                 </form>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block modal %}
     <!-- Edit Profile Modal -->
     <div id="editProfileModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Edit Profile</h2>
+        <div class="modal-content modal-card">
+            <div class="modal-header">
+                <h2>Edit Profile</h2>
+                <span class="close">&times;</span>
+            </div>
             <form method="POST" id="profileForm">
                 {% csrf_token %}
                 <div class="form-group">
@@ -68,9 +96,11 @@
 
     <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Change Password</h2>
+        <div class="modal-content modal-card">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <span class="close">&times;</span>
+            </div>
             <form method="POST" id="passwordForm">
                 {% csrf_token %}
                 <div class="form-group">
@@ -97,34 +127,19 @@
     function showModal(modalId) {
         document.getElementById(modalId).style.display = 'block';
     }
-
-    function showEditProfileModal() {
-        showModal('editProfileModal');
-    }
-
-    function showChangePasswordModal() {
-        showModal('changePasswordModal');
-    }
-
-    // Modal Close Buttons
+    function showEditProfileModal() { showModal('editProfileModal'); }
+    function showChangePasswordModal() { showModal('changePasswordModal'); }
     document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.onclick = function() {
-            this.closest('.modal').style.display = 'none';
-        }
+        closeBtn.onclick = function() { this.closest('.modal').style.display = 'none'; }
     });
-
-    // Close modal when clicking outside
     window.onclick = function(event) {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
         }
     }
-
-    // Form validation for password change
     document.getElementById('passwordForm').onsubmit = function(e) {
         const newPass = document.getElementById('new_password').value;
         const confirmPass = document.getElementById('confirm_password').value;
-        
         if (newPass !== confirmPass) {
             e.preventDefault();
             alert('New password and confirmation do not match!');
@@ -132,9 +147,375 @@
         }
         return true;
     };
-
-    function keepProfile() {
-        alert('Profile changes have been kept successfully!');
-    }
 </script>
 {% endblock %}
+
+<style>
+:root {
+    --primary-color: #3a7bd5;
+    --primary-hover: #2a5fa8;
+    --danger-color: #e74c3c;
+    --danger-hover: #c0392b;
+    --success-color: #2ecc71;
+    --success-hover: #27ae60;
+    --border-color: #e0e0e0;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --background-light: #f9f9f9;
+    --card-shadow: 0 8px 30px rgba(0,0,0,0.1);
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background-color: var(--background-light);
+    color: var(--text-primary);
+}
+
+/* Profile Container */
+.profile-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    background: var(--background-light);
+}
+
+/* Profile Card */
+.profile-card {
+    position: relative;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 2px solid var(--primary-color);
+}
+
+/* Profile Header */
+.profile-header {
+    width: 100%;
+    padding: 35px 0 20px 0;
+    background: linear-gradient(to right, #3a7bd5, #6ebce5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+}
+
+.avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    display: block;
+    margin: 0 auto;
+}
+
+.profile-title {
+    text-align: center;
+}
+
+.profile-username {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: white;
+}
+
+.profile-role {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    margin-top: 5px;
+}
+
+/* Profile Divider */
+.profile-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0 30px;
+}
+
+/* Profile Info List */
+.profile-info-list {
+    padding: 30px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.info-icon {
+    flex: 0 0 40px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: rgba(58, 123, 213, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-content label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    font-weight: 600;
+}
+
+.info-content span {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Profile Actions */
+.profile-actions {
+    padding: 20px 30px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.action-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.action-row.logout-row {
+    margin-top: 18px;
+    justify-content: center;
+}
+
+.action-btn {
+    padding: 12px 0;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 180px;
+    min-width: 120px;
+    max-width: 220px;
+}
+
+.edit-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.edit-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.change-password-btn {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.change-password-btn:hover {
+    background-color: var(--success-hover);
+}
+
+.logout-btn {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.logout-btn:hover {
+    background-color: var(--danger-hover);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    overflow: auto;
+}
+
+.modal-content {
+    position: relative;
+    background-color: #fff;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 450px;
+    margin: 80px auto;
+    animation: modalFadeIn 0.3s;
+    border: 2px solid var(--primary-color);
+}
+
+@keyframes modalFadeIn {
+    from {opacity: 0; transform: translateY(-30px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.close {
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.close:hover {
+    color: var(--text-primary);
+}
+
+/* Form Styles */
+form {
+    padding: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    background-color: #f7f9fc;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.1);
+}
+
+.save-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.save-btn:hover {
+    background-color: var(--success-hover);
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+    .profile-card {
+        border-radius: 15px;
+    }
+    
+    .profile-username {
+        font-size: 1.2rem;
+    }
+    
+    .profile-avatar {
+        width: 55px;
+        height: 55px;
+    }
+    
+    .info-item {
+        margin-bottom: 12px;
+    }
+    
+    .action-btn {
+        padding: 10px 0;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+    
+    .action-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .profile-info-list, .profile-actions {
+        padding: 20px;
+    }
+    
+    .modal-content {
+        margin: 50px auto;
+        width: 95%;
+    }
+}
+</style>

@@ -37,6 +37,9 @@ class Reservation(models.Model):
     billing_statement = models.FileField(upload_to='billing_statements/', null=True, blank=True)
     payment_receipt = models.FileField(upload_to='receipts/', blank=True, null=True)
     security_pass = models.FileField(upload_to='passes/', blank=True, null=True)
+    security_pass_returned = models.FileField(upload_to='security_passes/', blank=True, null=True)
+    security_pass_status = models.CharField(max_length=20, choices=[('Pending', 'Pending'), ('Confirmed', 'Confirmed'), ('Rejected', 'Rejected')], default='Pending')
+    security_pass_rejection_reason = models.TextField(blank=True, null=True)
 
     # Reservation details
     facility = models.CharField(max_length=255)

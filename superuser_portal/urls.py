@@ -33,4 +33,7 @@ urlpatterns = [
     path('upload-billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
     path('upload_billing/<int:reservation_id>/', views.upload_billing_statement, name='upload_billing'),
     path('verify_payment/<int:reservation_id>/', views.verify_payment, name='verify_payment'),
+    path('reservation/<int:reservation_id>/upload-security-pass/', views.upload_security_pass, name='upload_security_pass'),
+    path('reservation/<int:reservation_id>/confirm-security-pass/', views.confirm_security_pass, name='confirm_security_pass'),
+    path('reservation/<int:reservation_id>/reject-security-pass/', views.reject_security_pass, name='reject_security_pass'),
 ]
