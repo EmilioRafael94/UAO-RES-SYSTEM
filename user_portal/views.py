@@ -10,6 +10,8 @@ from .models import Notification
 from django.contrib.auth.models import User
 from django.conf import settings
 import os
+from datetime import datetime, time
+from datetime import datetime  # Import datetime for time comparison
 
 
 SAMPLE_RESERVATIONS = [
@@ -38,46 +40,75 @@ def user_myreservation(request):
 @login_required
 def user_makereservation(request):
     today = timezone.now().date()
+    context = {}
 
     if request.method == 'POST':
-        # Debug: Print all POST data
-        print("\n=== Form Submission Data ===")
-        for key, value in request.POST.items():
-            print(f"{key}: {value}")
-        print("===========================\n")
+        # Get all form data
+        form_data = {
+            'organization': request.POST.get('organization'),
+            'representative': request.POST.get('representative'),
+            'contact_number': request.POST.get('contact_number'),
+            'date_reserved': request.POST.get('date_reserved'),
+            'insider_count': request.POST.get('insider_count', 0),
+            'outsider_count': request.POST.get('outsider_count', 0),
+            'facility': request.POST.get('facility'),
+            'facility_use': request.POST.getlist('facility_use'),
+            'event_type': request.POST.getlist('event_type'),
+            'reasons': request.POST.get('reasons', ''),
+            
+            # Add quantities for facilities
+            'long_tables_quantity': request.POST.get('long_tables_quantity', 0),
+            'mono_block_chairs_quantity': request.POST.get('mono_block_chairs_quantity', 0),
+            'narra_chairs_quantity': request.POST.get('narra_chairs_quantity', 0),
+            'podium_quantity': request.POST.get('podium_quantity', 0),
+            'xu_seal_quantity': request.POST.get('xu_seal_quantity', 0),
+            'xu_logo_quantity': request.POST.get('xu_logo_quantity', 0),
+            'sound_system_quantity': request.POST.get('sound_system_quantity', 0),
+            'bulletin_board_quantity': request.POST.get('bulletin_board_quantity', 0),
+            'scaffolding_quantity': request.POST.get('scaffolding_quantity', 0),
+            'flag_quantity': request.POST.get('flag_quantity', 0),
+            'philippine_flag_quantity': request.POST.get('philippine_flag_quantity', 0),
+            'xu_flag_quantity': request.POST.get('xu_flag_quantity', 0),
+            'ceiling_fans_quantity': request.POST.get('ceiling_fans_quantity', 0),
+            'stand_fans_quantity': request.POST.get('stand_fans_quantity', 0),
+            'iwata_fans_quantity': request.POST.get('iwata_fans_quantity', 0),
+            'stage_non_acrylic_quantity': request.POST.get('stage_non_acrylic_quantity', 0),
+            'digital_clock_quantity': request.POST.get('digital_clock_quantity', 0),
+            'others_specify': request.POST.get('others_specify', ''),
+            
+            # Add quantities for manpower
+            'security_quantity': request.POST.get('security_quantity', 0),
+            'janitor_quantity': request.POST.get('janitor_quantity', 0),
+            'electrician_quantity': request.POST.get('electrician_quantity', 0),
+            'technician_quantity': request.POST.get('technician_quantity', 0),
+            'assistant_technician_quantity': request.POST.get('assistant_technician_quantity', 0),
+            'digital_clock_operator_quantity': request.POST.get('digital_clock_operator_quantity', 0),
+            'plumber_quantity': request.POST.get('plumber_quantity', 0),
+            'other_manpower_quantity': request.POST.get('other_manpower_quantity', 0),
+        }
 
-        organization = request.POST.get('organization')
-        representative = request.POST.get('representative')
-        contact_number = request.POST.get('contact_number')
-        date_reserved = request.POST.get('date_reserved')
-        insider_count = request.POST.get('insider_count', 0)
-        outsider_count = request.POST.get('outsider_count', 0)
-        date = request.POST.get('date')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
-        reasons = request.POST.get('reasons', '').strip()
+        # Get and validate date/time
+        try:
+            reservation_date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            start_time = datetime.strptime(request.POST.get('start_time'), '%H:%M').time()
+            end_time = datetime.strptime(request.POST.get('end_time'), '%H:%M').time()
 
-        # Facility (single selection)
-        facility = request.POST.get('facility')
-        facility_use = facility
+            if reservation_date < today:
+                messages.error(request, 'Cannot make reservations for past dates')
+                return render(request, 'user_portal/user_makereservation.html', {'form_data': form_data})
 
-        # Event Types (checkboxes, allow multiple)
-        event_types = request.POST.getlist('event_type')
-        if not event_types:
-            messages.error(request, 'Please select at least one event type')
-            return redirect('user_portal:user_makereservation')
-        event_type = ', '.join(event_types)
+            if start_time >= end_time:
+                messages.error(request, 'End time must be after start time')
+                return render(request, 'user_portal/user_makereservation.html', {'form_data': form_data})
 
-        # Validate required fields
-        required_fields = [facility, organization, representative, date, start_time, end_time, event_type]
-        if not all(required_fields):
-            messages.error(request, 'Please fill in all required fields.')
-            return redirect('user_portal:user_makereservation')
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid date or time format')
+            return render(request, 'user_portal/user_makereservation.html', {'form_data': form_data})
 
-        # Facilities Needed
+        # Process facility and manpower requirements
         facility_keys = [
-            'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
-            'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
+            'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal',
+            'xu_logo', 'sound_system', 'bulletin_board', 'scaffolding', 'flag', 'philippine_flag', 'xu_flag',
             'ceiling_fans', 'stand_fans', 'iwata_fans', 'stage_non_acrylic', 'digital_clock',
             'others'
         ]
@@ -86,8 +117,8 @@ def user_makereservation(request):
             for key in facility_keys 
             if request.POST.get(f"{key}_quantity")
         }
+        form_data['facilities_needed'] = facilities_needed
 
-        # Manpower Needed
         manpower_keys = [
             'security', 'janitor', 'electrician', 'technician',
             'assistant_technician', 'digital_clock_operator', 'plumber', 'other_manpower'
@@ -97,60 +128,50 @@ def user_makereservation(request):
             for key in manpower_keys 
             if request.POST.get(f"{key}_quantity")
         }
+        form_data['manpower_needed'] = manpower_needed
+
+        # Check time slot availability
+        is_available, error_message = is_time_slot_available(reservation_date, start_time, end_time, form_data['facility'])
+        if not is_available:
+            messages.warning(request, f'Scheduling Conflict: {error_message}')
+            # Create a notification about the blocked time slot
+            Notification.objects.create(
+                user=request.user,
+                message=f"Your reservation attempt for {form_data['facility']} on {reservation_date.strftime('%B %d, %Y')} from {start_time.strftime('%I:%M %p')} to {end_time.strftime('%I:%M %p')} was blocked due to a scheduling conflict. Please select a different date or time.",
+                notification_type='reservation_blocked'
+            )
+            return render(request, 'user_portal/user_makereservation.html', {'form_data': form_data})
 
         try:
-            # Debug: Print reservation data before creation
-            print("\n=== Creating Reservation ===")
-            print(f"User: {request.user.username}")
-            print(f"Date: {date}")
-            print(f"Start Time: {start_time}")
-            print(f"End Time: {end_time}")
-            print(f"Facility: {facility}")
-            print(f"Status: Pending")
-            print("==========================\n")
-
-            # Save the reservation
+            # Create the reservation
             reservation = Reservation.objects.create(
                 user=request.user,
-                organization=organization,
-                representative=representative,
-                contact_number=contact_number,
-                date_reserved=date_reserved,
-                date=date,
-                insider_count=insider_count,
-                outsider_count=outsider_count,
+                organization=form_data['organization'],
+                representative=form_data['representative'],
+                contact_number=form_data['contact_number'],
+                date_reserved=form_data['date_reserved'],
+                date=reservation_date,
+                insider_count=form_data['insider_count'],
+                outsider_count=form_data['outsider_count'],
                 start_time=start_time,
                 end_time=end_time,
-                reasons=reasons,
-                facility=facility,
-                facility_use=facility_use,
-                event_type=event_type,
+                reasons=form_data['reasons'],
+                facility=form_data['facility'],
+                facility_use=", ".join(form_data['facility_use']),
+                event_type=", ".join(form_data['event_type']),
                 facilities_needed=facilities_needed,
                 manpower_needed=manpower_needed,
                 status="Pending",
             )
             
-            # Debug: Print success message
-            print(f"\n=== Reservation Created Successfully ===")
-            print(f"Reservation ID: {reservation.id}")
-            print("=====================================\n")
-            
-            messages.success(request, 'Reservation created successfully!')
+            messages.success(request, 'Reservation created successfully! Your request will be reviewed by administrators.')
+            return redirect('user_portal:user_myreservation')
+
         except Exception as e:
-            # Debug: Print error details
-            print(f"\n=== Error Creating Reservation ===")
-            print(f"Error: {str(e)}")
-            print("===============================\n")
-            
             messages.error(request, f'Error creating reservation: {str(e)}')
-            return redirect('user_portal:user_makereservation')
+            return render(request, 'user_portal/user_makereservation.html', {'form_data': form_data})
 
-        return redirect('user_portal:user_myreservation')
-
-    return render(request, 'user_portal/user_makereservation.html', {
-        'today': today,
-    })
-
+    return render(request, 'user_portal/user_makereservation.html')
 
 
 @login_required
@@ -163,50 +184,95 @@ def edit_reservation(request, id):
         return redirect('user_portal:user_myreservation')
 
     if request.method == 'POST':
-        reservation.date = request.POST.get('date')
-        reservation.start_time = request.POST.get('start_time')
-        reservation.end_time = request.POST.get('end_time')
+        try:
+            # Get and validate date
+            new_date = datetime.strptime(request.POST.get('date'), '%Y-%m-%d').date()
+            if new_date < timezone.now().date():
+                messages.error(request, 'Cannot set reservation date to a past date')
+                return redirect('user_portal:edit_reservation', id=id)
 
-        # Update facilities to be used
-        facilities = request.POST.getlist('facility_use')  # Name should match the checkbox name
-        reservation.facility_use = ", ".join(facilities)
+            # Get and validate times
+            start_time = datetime.strptime(request.POST.get('start_time'), '%H:%M').time()
+            end_time = datetime.strptime(request.POST.get('end_time'), '%H:%M').time()
+            
+            if start_time >= end_time:
+                messages.error(request, 'End time must be after start time')
+                return redirect('user_portal:edit_reservation', id=id)
 
-        # Update facilities needed
-        reservation.facilities_needed = {
-            'long_tables': int(request.POST.get('long_tables_quantity') or 0),
-            'mono_block_chairs': int(request.POST.get('mono_block_chairs_quantity') or 0),
-            'narra_chairs': int(request.POST.get('narra_chairs_quantity') or 0),
-            'podium': int(request.POST.get('podium_quantity') or 0),
-            'xu_seal': int(request.POST.get('xu_seal_quantity') or 0),
-            'xu_logo': int(request.POST.get('xu_logo_quantity') or 0),
-            'sound_system': int(request.POST.get('sound_system_quantity') or 0),
-            'bulletin_board': int(request.POST.get('bulletin_board_quantity') or 0),
-            'scaffolding': int(request.POST.get('scaffolding_quantity') or 0),
-            'flag': int(request.POST.get('flag_quantity') or 0),
-            'philippine_flag': int(request.POST.get('philippine_flag_quantity') or 0),
-            'xu_flag': int(request.POST.get('xu_flag_quantity') or 0),
-            'ceiling_fans': int(request.POST.get('ceiling_fans_quantity') or 0),
-            'stand_fans': int(request.POST.get('stand_fans_quantity') or 0),
-            'iwata_fans': int(request.POST.get('iwata_fans_quantity') or 0),
-            'stage_non_acrylic': int(request.POST.get('stage_non_acrylic_quantity') or 0),
-            'digital_clock': int(request.POST.get('digital_clock_quantity') or 0),
-            'others': request.POST.get('others_specify', ''),
-        }
+            # Check time slot availability, excluding current reservation
+            other_reservations = Reservation.objects.filter(
+                date=new_date,
+                facility=reservation.facility,
+                status__in=['Admin Approved', 'Billing Uploaded', 'Payment Pending', 'Payment Approved', 'Security Pass Issued', 'Completed']
+            ).exclude(id=reservation.id)
 
-        # Update manpower needed
-        reservation.manpower_needed = {
-            'security': int(request.POST.get('security_quantity') or 0),
-            'janitor': int(request.POST.get('janitor_quantity') or 0),
-            'electrician': int(request.POST.get('electrician_quantity') or 0),
-            'technician': int(request.POST.get('technician_quantity') or 0),
-            'assistant_technician': int(request.POST.get('assistant_technician_quantity') or 0),
-            'digital_clock_operator': int(request.POST.get('digital_clock_operator_quantity') or 0),
-            'plumber': int(request.POST.get('plumber_quantity') or 0),
-            'other': int(request.POST.get('other_manpower_quantity') or 0),
-        }
+            for other_res in other_reservations:
+                if (start_time < other_res.end_time and end_time > other_res.start_time):
+                    formatted_time = f"{other_res.start_time.strftime('%I:%M %p')} - {other_res.end_time.strftime('%I:%M %p')}"
+                    messages.error(request, f"This facility is already reserved for {formatted_time} on {new_date.strftime('%B %d, %Y')}. Please choose a different time slot.")
+                    return redirect('user_portal:edit_reservation', id=id)
 
-        reservation.save()
-        return redirect('user_portal:user_myreservation')
+            # Update reservation fields
+            reservation.date = new_date
+            reservation.start_time = start_time
+            reservation.end_time = end_time
+
+            # Update facilities to be used
+            facilities = request.POST.getlist('facility_use')
+            reservation.facility_use = ", ".join(facilities)
+
+            # Update facilities needed
+            reservation.facilities_needed = {
+                'long_tables': int(request.POST.get('long_tables_quantity') or 0),
+                'mono_block_chairs': int(request.POST.get('mono_block_chairs_quantity') or 0),
+                'narra_chairs': int(request.POST.get('narra_chairs_quantity') or 0),
+                'podium': int(request.POST.get('podium_quantity') or 0),
+                'xu_seal': int(request.POST.get('xu_seal_quantity') or 0),
+                'xu_logo': int(request.POST.get('xu_logo_quantity') or 0),
+                'sound_system': int(request.POST.get('sound_system_quantity') or 0),
+                'bulletin_board': int(request.POST.get('bulletin_board_quantity') or 0),
+                'scaffolding': int(request.POST.get('scaffolding_quantity') or 0),
+                'flag': int(request.POST.get('flag_quantity') or 0),
+                'philippine_flag': int(request.POST.get('philippine_flag_quantity') or 0),
+                'xu_flag': int(request.POST.get('xu_flag_quantity') or 0),
+                'ceiling_fans': int(request.POST.get('ceiling_fans_quantity') or 0),
+                'stand_fans': int(request.POST.get('stand_fans_quantity') or 0),
+                'iwata_fans': int(request.POST.get('iwata_fans_quantity') or 0),
+                'stage_non_acrylic': int(request.POST.get('stage_non_acrylic_quantity') or 0),
+                'digital_clock': int(request.POST.get('digital_clock_quantity') or 0),
+                'others': request.POST.get('others_specify', ''),
+            }
+
+            # Update manpower needed
+            reservation.manpower_needed = {
+                'security': int(request.POST.get('security_quantity') or 0),
+                'janitor': int(request.POST.get('janitor_quantity') or 0),
+                'electrician': int(request.POST.get('electrician_quantity') or 0),
+                'technician': int(request.POST.get('technician_quantity') or 0),
+                'assistant_technician': int(request.POST.get('assistant_technician_quantity') or 0),
+                'digital_clock_operator': int(request.POST.get('digital_clock_operator_quantity') or 0),
+                'plumber': int(request.POST.get('plumber_quantity') or 0),
+                'other': request.POST.get('other_manpower_specifics', ''),
+            }
+
+            # Reset status to pending if significant fields were changed
+            if (reservation.date != reservation.date or 
+                reservation.start_time != reservation.start_time or 
+                reservation.end_time != reservation.end_time):
+                reservation.status = 'Pending'
+                reservation.admin_approvals = {}
+                messages.info(request, 'Your reservation has been updated and will need to be re-approved due to schedule changes.')
+
+            reservation.save()
+            messages.success(request, 'Reservation updated successfully!')
+            return redirect('user_portal:user_myreservation')
+
+        except ValueError as e:
+            messages.error(request, f'Invalid input: {str(e)}')
+            return redirect('user_portal:edit_reservation', id=id)
+        except Exception as e:
+            messages.error(request, f'Error updating reservation: {str(e)}')
+            return redirect('user_portal:edit_reservation', id=id)
 
     # Prepopulate facility_use as list
     facilities_list = reservation.facility_use.split(', ') if reservation.facility_use else []
@@ -217,9 +283,9 @@ def edit_reservation(request, id):
 
     return render(request, 'user_portal/edit_reservation.html', {
         'reservation': reservation,
-        'facilities_list': facilities_list,  # for checked checkboxes
-        'facilities_quantity': facilities_quantity,  # for facilities quantities
-        'manpower_quantity': manpower_quantity,  # for manpower quantities
+        'facilities_list': facilities_list,
+        'facilities_quantity': facilities_quantity,
+        'manpower_quantity': manpower_quantity,
     })
 
 
@@ -249,6 +315,11 @@ def user_dashboard(request):
     # Add formatted time to each reservation
     for reservation in user_reservations:
         reservation.formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
+    
+    # Get welcome message from session if it exists
+    welcome_message = request.session.pop('welcome_message', None)
+    if welcome_message:
+        messages.success(request, welcome_message)
     
     context = {
         'pending_reservations': pending_reservations,
@@ -559,3 +630,44 @@ def upload_security_pass(request, reservation_id):
         else:
             messages.error(request, "No file was uploaded. Please try again.")
     return redirect('user_portal:user_myreservation')
+
+def is_time_slot_available(date, start_time, end_time, facility):
+    """
+    Check if a time slot is available for a given facility
+    Returns (bool, str): (is_available, error_message)
+    """
+    # Convert string times to datetime.time objects if they're strings
+    if isinstance(start_time, str):
+        start_time = datetime.strptime(start_time, '%H:%M').time()
+    if isinstance(end_time, str):
+        end_time = datetime.strptime(end_time, '%H:%M').time()
+
+    # Check for existing approved reservations
+    existing_reservations = Reservation.objects.filter(
+        date=date,
+        facility=facility,
+        status__in=['Admin Approved', 'Billing Uploaded', 'Payment Pending', 'Payment Approved', 'Security Pass Issued', 'Completed']
+    )
+
+    for reservation in existing_reservations:
+        # Check if there's any overlap in time
+        if (start_time < reservation.end_time and end_time > reservation.start_time):
+            formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
+            return False, f"This facility is already reserved for {formatted_time} on {date.strftime('%B %d, %Y')}. Please choose a different time slot."
+
+    # Validate business hours (assuming 6 AM to 10 PM)
+    opening_time = time(6, 0)  # 6:00 AM
+    closing_time = time(22, 0)  # 10:00 PM
+    
+    if start_time < opening_time or end_time > closing_time:
+        return False, "Reservations must be between 6:00 AM and 10:00 PM"
+
+    # Validate duration (maximum 8 hours)
+    start_dt = datetime.combine(date, start_time)
+    end_dt = datetime.combine(date, end_time)
+    duration = end_dt - start_dt
+    
+    if duration.total_seconds() > 8 * 3600:  # 8 hours in seconds
+        return False, "Reservations cannot exceed 8 hours"
+
+    return True, ""

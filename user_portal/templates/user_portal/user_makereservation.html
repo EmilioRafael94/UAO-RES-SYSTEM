@@ -17,49 +17,74 @@
 
     <main class="user_makereservation-container">
         <h2>Reservation for the Use of the University Sports Facilities</h2>
-        <form method="POST">
+
+        {% for message in messages %}
+            {% if message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <div>
+                    <strong>Scheduling Conflict!</strong><br>
+                    {{ message }}
+                    <br>
+                    <small>Please select a different date or time for your reservation.</small>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-{% if message.tags %}{{ message.tags }}{% endif %}" role="alert">
+                {{ message }}
+            </div>
+            {% endif %}
+        {% endfor %}
+
+        <form method="POST" class="make_reservation-form">
             {% csrf_token %}
 
             <!-- Organization Information -->
             <div class="make_reservation-form-group">
                 <label for="organization">Name of Unit/School/Office/Organization</label>
-                <input type="text" id="organization" name="organization" placeholder="e.g., School of Business and Management">
+                <input type="text" id="organization" name="organization" placeholder="e.g., School of Business and Management" required value="{{ form_data.organization|default:'' }}">
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="representative">Name of Representative</label>
-                <input type="text" id="representative" name="representative" required>
+                <input type="text" id="representative" name="representative" required value="{{ form_data.representative|default:'' }}">
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="contact_number">Contact No.</label>
-                <input type="tel" id="contact_number" name="contact_number" pattern="[0-9]{10,11}" placeholder="e.g., 09123456789" required>
+                <input type="tel" id="contact_number" name="contact_number" pattern="[0-9]{10,11}" placeholder="e.g., 09123456789" required value="{{ form_data.contact_number|default:'' }}">
             </div>
 
             <!-- Reservation Information -->
             <div class="make_reservation-form-group">
                 <label for="date_reserved">Date Reserved</label>
-                <input type="date" id="date_reserved" name="date_reserved" required>
+                <input type="date" id="date_reserved" name="date_reserved" required value="{{ form_data.date_reserved|default:'' }}">
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="insider_count">Estimated No. of Participants (Insider)</label>
-                <input type="number" id="insider_count" name="insider_count" min="0">
+                <input type="number" id="insider_count" name="insider_count" min="0" required value="{{ form_data.insider_count|default:'0' }}">
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="outsider_count">Estimated No. of Participants (Outsider)</label>
-                <input type="number" id="outsider_count" name="outsider_count" min="0">
+                <input type="number" id="outsider_count" name="outsider_count" min="0" required value="{{ form_data.outsider_count|default:'0' }}">
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="date">Date of Actual Use</label>
                 <input type="date" id="date" name="date" required>
+                {% if message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+                <small class="text-muted">Previous time slot was unavailable. Please select a different date.</small>
+                {% endif %}
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="start_time">Start Time</label>
                 <input type="time" name="start_time" id="start_time" required>
+                {% if message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+                <small class="text-muted">Previous time slot was unavailable. Please select a different time.</small>
+                {% endif %}
             </div>
             
             <div class="make_reservation-form-group">
@@ -72,21 +97,56 @@
                 <label for="facility">Facility to be used</label>
                 <select name="facility" id="facility" required>
                     <option value="">Select a facility</option>
-                    <option value="Gymnasium">Gymnasium</option>
-                    <option value="Covered Court">Covered Court</option>
-                    <option value="Football Field">Football Field</option>
-                    <option value="Table Tennis Dug-out">Table Tennis Dug-out</option>
+                    <option value="Gymnasium" {% if form_data.facility == 'Gymnasium' %}selected{% endif %}>Gymnasium</option>
+                    <option value="Covered Court" {% if form_data.facility == 'Covered Court' %}selected{% endif %}>Covered Court</option>
+                    <option value="Football Field" {% if form_data.facility == 'Football Field' %}selected{% endif %}>Football Field</option>
+                    <option value="Table Tennis Dug-out" {% if form_data.facility == 'Table Tennis Dug-out' %}selected{% endif %}>Table Tennis Dug-out</option>
                 </select>
+            </div>
+
+            <!-- Facilities -->
+            <div class="make_reservation-form-group">
+                <label>Facilities to be used</label>
+                <div class="make_reservation-checkbox-group">
+                    <label>
+                        <input type="checkbox" name="facility_use" value="Gymnasium"
+                            {% if "Gymnasium" in form_data.facility_use %}checked{% endif %}> Gymnasium
+                    </label>
+                    <label>
+                        <input type="checkbox" name="facility_use" value="Covered Court"
+                            {% if "Covered Court" in form_data.facility_use %}checked{% endif %}> Covered Court
+                    </label>
+                    <label>
+                        <input type="checkbox" name="facility_use" value="Football Field"
+                            {% if "Football Field" in form_data.facility_use %}checked{% endif %}> Football Field
+                    </label>
+                    <label>
+                        <input type="checkbox" name="facility_use" value="Table Tennis Dug-out"
+                            {% if "Table Tennis Dug-out" in form_data.facility_use %}checked{% endif %}> Table Tennis Dug-out
+                    </label>
+                </div>
             </div>
 
             <!-- Event Type -->
             <div class="make_reservation-form-group">
-                <label>Type of Event (Select at least one)</label>
+                <label>Event Type</label>
                 <div class="make_reservation-checkbox-group">
-                    <label><input type="checkbox" name="event_type" value="Sports Activities" required> Sports-Related Activities</label>
-                    <label><input type="checkbox" name="event_type" value="General Assembly"> General Assembly</label>
-                    <label><input type="checkbox" name="event_type" value="Forum"> Forum/Symposium</label>
-                    <label><input type="checkbox" name="event_type" value="Others"> Others</label>
+                    <label>
+                        <input type="checkbox" name="event_type" value="Sports"
+                            {% if "Sports" in form_data.event_type %}checked{% endif %}> Sports
+                    </label>
+                    <label>
+                        <input type="checkbox" name="event_type" value="Training"
+                            {% if "Training" in form_data.event_type %}checked{% endif %}> Training
+                    </label>
+                    <label>
+                        <input type="checkbox" name="event_type" value="Competition"
+                            {% if "Competition" in form_data.event_type %}checked{% endif %}> Competition
+                    </label>
+                    <label>
+                        <input type="checkbox" name="event_type" value="Program"
+                            {% if "Program" in form_data.event_type %}checked{% endif %}> Program
+                    </label>
                 </div>
             </div>
 
@@ -96,32 +156,32 @@
                 <div class="make_reservation-facilities-grid">
                     <!-- Tables 1–4 -->
                     <table>
-                        <tr><td>Long Tables</td><td><input type="number" name="long_tables_quantity" min="0"></td></tr>
-                        <tr><td>Mono Block Chairs</td><td><input type="number" name="mono_block_chairs_quantity" min="0"></td></tr>
-                        <tr><td>Narra Chairs</td><td><input type="number" name="narra_chairs_quantity" min="0"></td></tr>
-                        <tr><td>Podium</td><td><input type="number" name="podium_quantity" min="0"></td></tr>
-                        <tr><td>XU Seal</td><td><input type="number" name="xu_seal_quantity" min="0"></td></tr>
-                        <tr><td>XU Logo</td><td><input type="number" name="xu_logo_quantity" min="0"></td></tr>
+                        <tr><td>Long Tables</td><td><input type="number" name="long_tables_quantity" min="0" value="{{ form_data.long_tables_quantity|default:0 }}"></td></tr>
+                        <tr><td>Mono Block Chairs</td><td><input type="number" name="mono_block_chairs_quantity" min="0" value="{{ form_data.mono_block_chairs_quantity|default:0 }}"></td></tr>
+                        <tr><td>Narra Chairs</td><td><input type="number" name="narra_chairs_quantity" min="0" value="{{ form_data.narra_chairs_quantity|default:0 }}"></td></tr>
+                        <tr><td>Podium</td><td><input type="number" name="podium_quantity" min="0" value="{{ form_data.podium_quantity|default:0 }}"></td></tr>
+                        <tr><td>XU Seal</td><td><input type="number" name="xu_seal_quantity" min="0" value="{{ form_data.xu_seal_quantity|default:0 }}"></td></tr>
+                        <tr><td>XU Logo</td><td><input type="number" name="xu_logo_quantity" min="0" value="{{ form_data.xu_logo_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Sound System</td><td><input type="number" name="sound_system_quantity" min="0"></td></tr>
-                        <tr><td>Bulletin Board</td><td><input type="number" name="bulletin_board_quantity" min="0"></td></tr>
-                        <tr><td>Scaffolding</td><td><input type="number" name="scaffolding_quantity" min="0"></td></tr>
-                        <tr><td>Flag</td><td><input type="number" name="flag_quantity" min="0"></td></tr>
-                        <tr><td>Philippine Flag</td><td><input type="number" name="philippine_flag_quantity" min="0"></td></tr>
-                        <tr><td>XU Flag</td><td><input type="number" name="xu_flag_quantity" min="0"></td></tr>
+                        <tr><td>Sound System</td><td><input type="number" name="sound_system_quantity" min="0" value="{{ form_data.sound_system_quantity|default:0 }}"></td></tr>
+                        <tr><td>Bulletin Board</td><td><input type="number" name="bulletin_board_quantity" min="0" value="{{ form_data.bulletin_board_quantity|default:0 }}"></td></tr>
+                        <tr><td>Scaffolding</td><td><input type="number" name="scaffolding_quantity" min="0" value="{{ form_data.scaffolding_quantity|default:0 }}"></td></tr>
+                        <tr><td>Flag</td><td><input type="number" name="flag_quantity" min="0" value="{{ form_data.flag_quantity|default:0 }}"></td></tr>
+                        <tr><td>Philippine Flag</td><td><input type="number" name="philippine_flag_quantity" min="0" value="{{ form_data.philippine_flag_quantity|default:0 }}"></td></tr>
+                        <tr><td>XU Flag</td><td><input type="number" name="xu_flag_quantity" min="0" value="{{ form_data.xu_flag_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Ceiling Fans</td><td><input type="number" name="ceiling_fans_quantity" min="0"></td></tr>
-                        <tr><td>Stand Fans</td><td><input type="number" name="stand_fans_quantity" min="0"></td></tr>
-                        <tr><td>Iwata Fans</td><td><input type="number" name="iwata_fans_quantity" min="0"></td></tr>
-                        <tr><td>Stage Non-Acrylic</td><td><input type="number" name="stage_non_acrylic_quantity" min="0"></td></tr>
+                        <tr><td>Ceiling Fans</td><td><input type="number" name="ceiling_fans_quantity" min="0" value="{{ form_data.ceiling_fans_quantity|default:0 }}"></td></tr>
+                        <tr><td>Stand Fans</td><td><input type="number" name="stand_fans_quantity" min="0" value="{{ form_data.stand_fans_quantity|default:0 }}"></td></tr>
+                        <tr><td>Iwata Fans</td><td><input type="number" name="iwata_fans_quantity" min="0" value="{{ form_data.iwata_fans_quantity|default:0 }}"></td></tr>
+                        <tr><td>Stage Non-Acrylic</td><td><input type="number" name="stage_non_acrylic_quantity" min="0" value="{{ form_data.stage_non_acrylic_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Digital Clock</td><td><input type="number" name="digital_clock_quantity" min="0"></td></tr>
+                        <tr><td>Digital Clock</td><td><input type="number" name="digital_clock_quantity" min="0" value="{{ form_data.digital_clock_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Others (Please specify)</td><td><input type="text" name="others_specify"></td></tr>
+                        <tr><td>Others (Please specify)</td><td><input type="text" name="others_specify" value="{{ form_data.others_specify|default:'' }}"></td></tr>
                     </table>
                 </div>
             </div>
@@ -131,20 +191,20 @@
                 <label>Manpower Needed</label>
                 <div class="make_reservation-table-container">
                     <table>
-                        <tr><td>Security</td><td><input type="number" name="security_quantity" min="0"></td></tr>
-                        <tr><td>Janitor</td><td><input type="number" name="janitor_quantity" min="0"></td></tr>
+                        <tr><td>Security</td><td><input type="number" name="security_quantity" min="0" value="{{ form_data.security_quantity|default:0 }}"></td></tr>
+                        <tr><td>Janitor</td><td><input type="number" name="janitor_quantity" min="0" value="{{ form_data.janitor_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Electrician</td><td><input type="number" name="electrician_quantity" min="0"></td></tr>
-                        <tr><td>Technician</td><td><input type="number" name="technician_quantity" min="0"></td></tr>
+                        <tr><td>Electrician</td><td><input type="number" name="electrician_quantity" min="0" value="{{ form_data.electrician_quantity|default:0 }}"></td></tr>
+                        <tr><td>Technician</td><td><input type="number" name="technician_quantity" min="0" value="{{ form_data.technician_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Assistant Technician</td><td><input type="number" name="assistant_technician_quantity" min="0"></td></tr>
-                        <tr><td>Digital Clock Operator</td><td><input type="number" name="digital_clock_operator_quantity" min="0"></td></tr>
+                        <tr><td>Assistant Technician</td><td><input type="number" name="assistant_technician_quantity" min="0" value="{{ form_data.assistant_technician_quantity|default:0 }}"></td></tr>
+                        <tr><td>Digital Clock Operator</td><td><input type="number" name="digital_clock_operator_quantity" min="0" value="{{ form_data.digital_clock_operator_quantity|default:0 }}"></td></tr>
                     </table>
                     <table>
-                        <tr><td>Plumber</td><td><input type="number" name="plumber_quantity" min="0"></td></tr>
-                        <tr><td>Other:</td><td><input type="number" name="other_manpower_quantity" min="0"></td></tr>
+                        <tr><td>Plumber</td><td><input type="number" name="plumber_quantity" min="0" value="{{ form_data.plumber_quantity|default:0 }}"></td></tr>
+                        <tr><td>Other:</td><td><input type="number" name="other_manpower_quantity" min="0" value="{{ form_data.other_manpower_quantity|default:0 }}"></td></tr>
                     </table>
                 </div>
             </div>

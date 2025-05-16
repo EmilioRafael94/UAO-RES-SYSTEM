@@ -8,6 +8,7 @@ from .models import UserProfile
 from .forms import CustomUserCreationForm
 from django.contrib.auth.models import User
 from user_portal.models import Profile
+from django.db import IntegrityError
 
 
 def register(request):
@@ -79,7 +80,8 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()  # Get the user object
             login(request, user)
-            messages.success(request, f"Welcome back {user.username}!")
+            # Store welcome message in session instead of messages framework
+            request.session['welcome_message'] = f"Welcome back {user.username}!"
             return redirect('home')  # Redirect to the home page or dashboard after successful login
         else:
             # Invalid login attempt, show error message

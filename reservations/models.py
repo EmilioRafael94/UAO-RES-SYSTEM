@@ -162,3 +162,51 @@ class Reservation(models.Model):
             }
             for admin, data in approvals.items()
         ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+
+        # Validate date is not in the past
+        if self.date and self.date < timezone.now().date():
+            raise ValidationError({'date': 'Reservation date cannot be in the past'})
+
+        # Validate time range
+        if self.start_time and self.end_time:
+            if self.start_time >= self.end_time:
+                raise ValidationError({'end_time': 'End time must be after start time'})
+
+            # Validate business hours (6 AM to 10 PM)
+            opening_time = timezone.datetime.strptime('06:00', '%H:%M').time()
+            closing_time = timezone.datetime.strptime('22:00', '%H:%M').time()
+            
+            if self.start_time < opening_time or self.end_time > closing_time:
+                raise ValidationError('Reservations must be between 6:00 AM and 10:00 PM')
+
+            # Validate duration (maximum 8 hours)
+            start_dt = timezone.datetime.combine(timezone.now().date(), self.start_time)
+            end_dt = timezone.datetime.combine(timezone.now().date(), self.end_time)
+            duration = end_dt - start_dt
+            
+            if duration.total_seconds() > 8 * 3600:  # 8 hours in seconds
+                raise ValidationError('Reservations cannot exceed 8 hours')
+
+        # Check for overlapping reservations
+        if self.date and self.start_time and self.end_time and self.facility:
+            overlapping = Reservation.objects.filter(
+                date=self.date,
+                facility=self.facility,
+                status__in=['Admin Approved', 'Billing Uploaded', 'Payment Pending', 
+                           'Payment Approved', 'Security Pass Issued', 'Completed']
+            ).exclude(pk=self.pk)  # Exclude self when editing
+
+            for existing in overlapping:
+                if (self.start_time < existing.end_time and self.end_time > existing.start_time):
+                    formatted_time = f"{existing.start_time.strftime('%I:%M %p')} - {existing.end_time.strftime('%I:%M %p')}"
+                    raise ValidationError(
+                        f'This facility is already reserved for {formatted_time} on {self.date.strftime("%B %d, %Y")}'
+                    )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Run validation before saving
+        super().save(*args, **kwargs)
