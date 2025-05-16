@@ -15,3 +15,5 @@ urlpatterns = [
     path('home/', views.home_redirect, name='home'),
     path('logout/', CustomLogoutView.as_view(next_page='accounts:login'), name='logout'),
 ]
+
+

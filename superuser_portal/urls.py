@@ -37,3 +37,6 @@ urlpatterns = [
     path('reservation/<int:reservation_id>/confirm-security-pass/', views.confirm_security_pass, name='confirm_security_pass'),
     path('reservation/<int:reservation_id>/reject-security-pass/', views.reject_security_pass, name='reject_security_pass'),
 ]
+
+
+

@@ -17,3 +17,7 @@ urlpatterns = [
     path('profile/update/', views.update_profile, name='update_profile'),
     path('reservations/get/', views.get_reservations, name='get_reservations'),
 ]
+
+
+
+
