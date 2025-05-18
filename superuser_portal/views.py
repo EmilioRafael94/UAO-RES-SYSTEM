@@ -196,12 +196,10 @@ def verify_pass(request, reservation_id):
 @user_passes_test(is_superuser)
 def system_settings(request):
     facilities = Facility.objects.all().order_by('name')
-    time_templates = TimeSlotTemplate.objects.all().prefetch_related('slots')
     blocked_dates = BlockedDate.objects.all().select_related('facility')
     
     context = {
         'facilities': facilities,
-        'time_templates': time_templates,
         'blocked_dates': blocked_dates
     }
     
@@ -298,12 +296,16 @@ def manage_blocked_dates(request):
         facility_id = request.POST.get('facility')
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
         reason = request.POST.get('reason')
         
         BlockedDate.objects.create(
             facility_id=facility_id,
             start_date=start_date,
             end_date=end_date,
+            start_time=start_time,
+            end_time=end_time,
             reason=reason,
             created_by=request.user
         )
