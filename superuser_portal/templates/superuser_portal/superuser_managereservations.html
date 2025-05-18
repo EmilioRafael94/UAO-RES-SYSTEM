@@ -4,18 +4,17 @@
 
 {% block content %}
     <div class="reservations-container">
-        <!-- Filter Section -->
-        <div class="filter-bar">
-            <select id="statusFilter" onchange="applyFilter(this.value)">
+        <!-- Filter Dropdown -->
+        <div class="filter-section">
+            <select id="filterSelect" class="filter-dropdown" onchange="applyFilter(this.value)">
                 <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Reservations</option>
                 <option value="needs_billing" {% if current_filter == 'needs_billing' %}selected{% endif %}>Needs Billing</option>
-                <option value="needs_payment" {% if current_filter == 'needs_payment' %}selected{% endif %}>Needs Receipt Verification</option>
-                <option value="needs_pass" {% if current_filter == 'needs_pass' %}selected{% endif %}>Needs Pass Review</option>
+                <option value="needs_payment" {% if current_filter == 'needs_payment' %}selected{% endif %}>Needs Payment</option>
+                <option value="needs_pass" {% if current_filter == 'needs_pass' %}selected{% endif %}>Needs Security Pass</option>
+                <option value="completed" {% if current_filter == 'completed' %}selected{% endif %}>Completed</option>
+                <option value="rejected" {% if current_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                <option value="today" {% if current_filter == 'today' %}selected{% endif %}>Today</option>
             </select>
-            
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search reservations..." oninput="searchReservations()">
-            </div>
         </div>
 
         <!-- Reservations Table -->
@@ -23,41 +22,38 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Reference #</th>
+                        <th>Reference</th>
                         <th>Facility</th>
-                        <th>Event Date</th>
+                        <th>Date</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="reservationsBody">
-                    {% for res in reservations %}
-                    <tr>
-                        <td>{{ res.reference }}</td>
-                        <td>{{ res.facility }}</td>
-                        <td>{{ res.date|date:"M d, Y" }}</td>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr class="reservation-row" data-id="{{ reservation.id }}">
+                        <td>{{ reservation.reference }}</td>
+                        <td>{{ reservation.facility }}</td>
+                        <td>{{ reservation.date|date:'M. d, Y' }}</td>
                         <td>
-                            {% if res.admin_rejections and res.admin_rejections|length > 0 %}
-                                <span class="status-badge status-terminated">Terminated</span>
-                            {% elif res.admin_approvals and res.admin_approvals|length >= 4 %}
-                                <span class="status-badge status-ready">Ready for Billing</span>
-                            {% else %}
-                                <span class="status-badge status-waiting">Waiting for Admin Approvals</span>
-                            {% endif %}
+                            <span class="status-badge 
+                                {% if reservation.status == 'Completed' %}status-completed
+                                {% elif reservation.status == 'Rejected' %}status-rejected
+                                {% elif reservation.status == 'Needs Billing' %}status-pending
+                                {% elif reservation.status == 'Needs Payment Verification' %}status-pending
+                                {% elif reservation.status == 'Needs Security Pass' %}status-pending
+                                {% elif reservation.status == 'Waiting for Returned Pass' %}status-pending
+                                {% else %}status-default{% endif %}">
+                                {{ reservation.status }}
+                            </span>
                         </td>
                         <td>
-                            {% if res.admin_rejections and res.admin_rejections|length > 0 %}
-                                <button class="view-btn" disabled style="opacity:0.5;cursor:not-allowed;">Go</button>
-                            {% elif res.admin_approvals and res.admin_approvals|length >= 4 %}
-                                <button onclick="viewReservationDetails('{{ res.id }}')" class="view-btn">Go</button>
-                            {% else %}
-                                <button class="view-btn" disabled style="opacity:0.5;cursor:not-allowed;">Go</button>
-                            {% endif %}
+                            <button onclick="viewReservationDetails('{{ reservation.id }}')" class="btn btn-primary btn-sm">View Details</button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="no-data">No reservations found</td>
+                        <td colspan="5" class="text-center">No reservations found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -214,71 +210,98 @@ const closeBtn = document.querySelector('.modal-content .close');
 
 function viewReservationDetails(reservationId) {
     modal.style.display = 'block';
-    
-    // Load reservation details via Ajax
-    fetch(`/superuser_portal/reservation/${reservationId}/details/`)
+    // Show loading while fetching
+    document.getElementById('billingDetails').innerHTML = 'Loading...';
+    document.getElementById('paymentDetails').innerHTML = 'Loading...';
+    document.getElementById('passDetails').innerHTML = 'Loading...';
+    fetch(`/superuser_portal/get_reservation_details/${reservationId}/`)
         .then(response => response.json())
         .then(data => {
+            if (data.error) {
+                document.getElementById('billingDetails').innerHTML = `<div class='alert alert-danger'>${data.error}</div>`;
+                document.getElementById('paymentDetails').innerHTML = `<div class='alert alert-danger'>${data.error}</div>`;
+                document.getElementById('passDetails').innerHTML = `<div class='alert alert-danger'>${data.error}</div>`;
+                return;
+            }
+            window.currentReservationStatus = data.status;
+            window.currentAdminApprovalCount = data.admin_approval_count || 0;
             updateBillingSection(data.billing);
             updatePaymentSection(data.payment);
             updatePassSection(data.pass);
-            document.getElementById('current-reservation-id').value = reservationId; // Set reservation ID
+            document.getElementById('current-reservation-id').value = reservationId;
+        })
+        .catch(error => {
+            document.getElementById('billingDetails').innerHTML = `<div class='alert alert-danger'>Error loading details.</div>`;
+            document.getElementById('paymentDetails').innerHTML = `<div class='alert alert-danger'>Error loading details.</div>`;
+            document.getElementById('passDetails').innerHTML = `<div class='alert alert-danger'>Error loading details.</div>`;
         });
 }
 
 function updateBillingSection(billing) {
-    const billingHtml = billing.statement_url ? 
-        `<div class="file-section">
-            <a href="${billing.statement_url}" class="file-link" target="_blank">
-                View Billing Statement
-            </a>
-        </div>` :
-        `<div class="upload-section">
-            <form onsubmit="uploadBilling(event)">
-                <input type="file" required>
-                <button type="submit">Upload Billing Statement</button>
-            </form>
-        </div>`;
-    
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
+
+    let billingHtml = '';
+    if (reservationStatus === 'Rejected') {
+        billingHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        billingHtml = `<div class="pending-section">Waiting for admin approval</div>`;
+    } else {
+        // Show upload or view billing statement
+        if (billing.statement_url) {
+            billingHtml = `<div class="file-section">
+                <a href="${billing.statement_url}" class="file-link" target="_blank">
+                    View Billing Statement
+                </a>
+            </div>`;
+        } else {
+            billingHtml = `<div class="upload-section">
+                <form onsubmit="uploadBilling(event)">
+                    <input type="file" required>
+                    <button type="submit">Upload Billing Statement</button>
+                </form>
+            </div>`;
+        }
+    }
     document.getElementById('billingDetails').innerHTML = billingHtml;
 }
 
 function updatePaymentSection(payment) {
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
     let paymentHtml = '';
-
-    if (payment.receipt_url) {
-        // Payment receipt has been uploaded by user
-        paymentHtml = `
-            <div class="receipt-section">
-                <div class="receipt-preview">
-                    <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
-                        View Payment Receipt
-                    </a>
-                </div>
-                <div class="verification-actions mt-3">
-                    <button type="button" class="btn btn-success" id="verifyPaymentBtn">
-                        <i class="fas fa-check-circle"></i> Verify Payment
-                    </button>
-                    <button type="button" class="btn btn-danger" id="rejectPaymentBtn">
-                        <i class="fas fa-times-circle"></i> Reject
-                    </button>
-                </div>
-            </div>`;
+    if (reservationStatus === 'Rejected') {
+        paymentHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        paymentHtml = `<div class="pending-section">Waiting for admin approval</div>`;
     } else {
-        // No payment receipt uploaded yet
-        paymentHtml = `
-            <div class="waiting-message">
-                Waiting for payment receipt...
-            </div>`;
-    }
+        if (payment.receipt_url) {
+            paymentHtml = `
+                <div class="receipt-section">
+                    <div class="receipt-preview">
+                        <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
+                            View Payment Receipt
+                        </a>
+                    </div>
+                    <div class="verification-actions mt-3">
+                        <button type="button" class="btn btn-success" id="verifyPaymentBtn">
+                            <i class="fas fa-check-circle"></i> Verify Payment
+                        </button>
+                        <button type="button" class="btn btn-danger" id="rejectPaymentBtn">
+                            <i class="fas fa-times-circle"></i> Reject
+                        </button>
+                    </div>
+                </div>`;
+        } else {
+            paymentHtml = `<div class="pending-section">Waiting for payment receipt...</div>`;
+        }
 
-    if (payment.status === 'Payment Rejected' && payment.rejection_reason) {
-        paymentHtml += `<div class="alert alert-danger mt-2"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
+        if (payment.status === 'Payment Rejected' && payment.rejection_reason) {
+            paymentHtml += `<div class="alert alert-danger mt-2"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
+        }
     }
-
     document.getElementById('paymentDetails').innerHTML = paymentHtml;
 
-    // Attach event listeners after rendering
     const verifyBtn = document.getElementById('verifyPaymentBtn');
     if (verifyBtn) {
         verifyBtn.onclick = function() { verifyPayment(payment.id); };
@@ -290,40 +313,45 @@ function updatePaymentSection(payment) {
 }
 
 function updatePassSection(pass) {
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
     let passHtml = '';
-    // Show upload form if superuser needs to upload a blank security pass
-    if ((pass.can_upload || pass.status === 'Needs Security Pass' || pass.status === 'Payment Approved') && !pass.file_url) {
-        passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
-            <input type="file" name="security_pass" required>
-            <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
-        </form>`;
-    } else if (pass.file_url) {
-        // Show the uploaded security pass file
-        passHtml = `<div class="file-section">
-            <a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
-        if (pass.returned_url) {
-            passHtml += `<div class='mt-2'><a href="${pass.returned_url}" class="file-link" target="_blank">View Returned Pass</a></div>`;
-            passHtml += `<div class='mt-2'>
-                <button onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
-                <button onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
-            </div>`;
-        } else {
-            passHtml += `<div class='mt-2'><em>Waiting for user to return filled pass...</em></div>`;
-        }
-        passHtml += `<div class='mt-2'><strong>Status:</strong> ${pass.status || 'Pending'}</div>`;
-        if (pass.status === 'Rejected' && pass.rejection_reason) {
-            passHtml += `<div class='alert alert-danger mt-2'><strong>Reason:</strong> ${pass.rejection_reason}</div>`;
-        }
-        passHtml += `</div>`;
+    if (reservationStatus === 'Rejected') {
+        passHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        passHtml = `<div class="pending-section">Waiting for admin approval</div>`;
     } else {
-        // If payment is approved but no security pass uploaded, show upload form
-        if (pass.status === 'Payment Approved' && !pass.file_url) {
+        if ((pass.can_upload || pass.status === 'Needs Security Pass' || pass.status === 'Payment Approved') && !pass.file_url) {
             passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
                 <input type="file" name="security_pass" required>
                 <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
             </form>`;
+        } else if (pass.file_url) {
+            passHtml = `<div class="file-section">
+                <a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
+            if (pass.returned_url) {
+                passHtml += `<div class='mt-2'><a href="${pass.returned_url}" class="file-link" target="_blank">View Returned Pass</a></div>`;
+                passHtml += `<div class='mt-2'>
+                    <button onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
+                    <button onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
+                </div>`;
+            } else {
+                passHtml += `<div class='mt-2'><em>Waiting for user to return filled pass...</em></div>`;
+            }
+            passHtml += `<div class='mt-2'><strong>Status:</strong> ${pass.status || 'Pending'}</div>`;
+            if (pass.status === 'Rejected' && pass.rejection_reason) {
+                passHtml += `<div class='alert alert-danger mt-2'><strong>Reason:</strong> ${pass.rejection_reason}</div>`;
+            }
+            passHtml += `</div>`;
         } else {
-            passHtml = `<div class="pending-section">Waiting for security pass...</div>`;
+            if (pass.status === 'Payment Approved' && !pass.file_url) {
+                passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
+                    <input type="file" name="security_pass" required>
+                    <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
+                </form>`;
+            } else {
+                passHtml = `<div class="pending-section">Waiting for security pass...</div>`;
+            }
         }
     }
     document.getElementById('passDetails').innerHTML = passHtml;
@@ -496,4 +524,94 @@ function uploadBilling(event) {
 }
 </script>
 {% endblock %}
+
+<style>
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    .status-completed {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .status-rejected {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .status-pending {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .status-default {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .filter-section {
+        margin-bottom: 20px;
+    }
+
+    .filter-dropdown {
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+        background-color: white;
+        font-size: 14px;
+        color: #495057;
+        min-width: 200px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-dropdown:hover {
+        border-color: #adb5bd;
+    }
+
+    .filter-dropdown:focus {
+        outline: none;
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+
+    .reservations-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .reservations-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .reservations-table th,
+    .reservations-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .reservations-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .reservations-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+</style>
 

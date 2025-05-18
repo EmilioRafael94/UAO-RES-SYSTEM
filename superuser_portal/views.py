@@ -15,6 +15,7 @@ from user_portal.models import Notification
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
+from reservations.email_utils import send_reservation_email
 
 def is_superuser(user):
     return user.is_superuser
@@ -78,21 +79,30 @@ def manage_reservations(request):
     elif filter_type == 'rejected':
         reservations = Reservation.objects.filter(status='Rejected')
 
+    elif filter_type == 'completed':
+        reservations = Reservation.objects.filter(status='Completed')
+
     else:  # 'all' or unknown filter
         reservations = Reservation.objects.all()
 
     # Process reservations for display
     reservations_data = []
     for res in reservations:
-        # Default to 'Complete' if all requirements are met
+        # Determine the display status and admin approval count
         if res.status == 'Rejected':
-            status = 'Rejected'
-        elif res.status == 'Admin Approved':
-            status = 'Needs Billing'
+            status = 'Rejected by admin(s)'
+        elif res.status == 'Pending' or (len(res.admin_approvals or {}) < 4):
+            status = 'Waiting for admin approval'
+        elif len(res.admin_approvals or {}) >= 4 and res.status == 'Admin Approved':
+            status = 'Approved by 4 admins. Billing and security pass process ready.'
+        elif res.status == 'Completed':
+            status = 'Completed'
         elif res.status == 'Billing Uploaded':
-            status = 'Needs Payment Verification'
+            status = 'Billing Uploaded'
         elif res.status == 'Payment Approved':
-            status = 'Needs Security Pass'
+            status = 'Payment Approved'
+        elif res.status == 'Security Pass Issued':
+            status = 'Security Pass Issued'
         else:
             status = res.status
 
@@ -108,6 +118,8 @@ def manage_reservations(request):
             'receipt_file': res.payment_receipt,
             'admin_approvals': res.admin_approvals,
             'admin_rejections': res.admin_rejections,
+            'security_pass_status': res.security_pass_status,
+            'admin_approval_count': len(res.admin_approvals or {}),
         })
 
     context = {
@@ -140,7 +152,7 @@ def verify_payment(request, reservation_id):
             reservation.payment_verified_date = timezone.now()
             reservation.payment_rejection_reason = ''  # Clear any previous rejection reason
             reservation.save()
-
+            # Do NOT send security pass email here
             return JsonResponse({
                 'success': True,
                 'message': 'Payment verified successfully'
@@ -228,7 +240,7 @@ def delete_facility(request, facility_id):
     if request.method == 'POST':
         facility = get_object_or_404(Facility, id=facility_id)
         facility.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Facility deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -276,7 +288,7 @@ def delete_time_template(request, template_id):
     if request.method == 'POST':
         template = get_object_or_404(TimeSlotTemplate, id=template_id)
         template.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Time template deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -313,7 +325,7 @@ def delete_blocked_date(request, date_id):
     if request.method == 'POST':
         blocked_date = get_object_or_404(BlockedDate, id=date_id)
         blocked_date.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Blocked date deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -355,8 +367,6 @@ def reset_user_password(request, user_id):
         user.set_password(new_password)
         user.save()
         
-        # TODO: Send email with new password
-        # For now, we'll return the password in the response
         return JsonResponse({
             'success': True,
             'message': 'Password has been reset',
@@ -398,10 +408,6 @@ def dashboard(request):
 def upload_billing(request, reservation_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     if request.method == 'POST':
-        print(f"Received POST request for reservation ID: {reservation_id}")
-        print(f"Billing file: {request.FILES.get('billing_file')}")
-        print(f"Amount: {request.POST.get('amount')}, Due Date: {request.POST.get('due_date')}")
-
         billing_file = request.FILES.get('billing_file')
         amount = request.POST.get('amount')
         due_date = request.POST.get('due_date')
@@ -412,9 +418,11 @@ def upload_billing(request, reservation_id):
             reservation.due_date = due_date
             reservation.status = 'Billing Issued'  # Ensure status is updated correctly
             reservation.save()
-            messages.success(request, 'Billing uploaded successfully.')
+            if request.user.is_authenticated:
+                messages.success(request, 'Billing uploaded successfully.')
         else:
-            messages.error(request, 'All fields are required to upload billing.')
+            if request.user.is_authenticated:
+                messages.error(request, 'All fields are required to upload billing.')
 
         return redirect('superuser_portal:superuser_dashboard')
 
@@ -461,33 +469,29 @@ def reservation_details(request, reservation_id):
 @user_passes_test(is_superuser)
 @csrf_exempt  # Only if you handle CSRF manually in JS
 def upload_billing_statement(request, reservation_id):
-    """
-    Handle the upload of billing statement PDF by superuser
-    """
-    if not request.user.is_superuser:
-        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
-
-    try:
-        reservation = get_object_or_404(Reservation, id=reservation_id)
-
-        if 'billing_statement' not in request.FILES:
-            return JsonResponse({'success': False, 'error': 'No file uploaded'}, status=400)
-
-        # Save the billing statement to the reservation
-        billing_file = request.FILES['billing_statement']
-        reservation.billing_statement = billing_file
-        reservation.status = 'Billing Uploaded'  # Update status to reflect billing has been uploaded
+    reservation = get_object_or_404(Reservation, id=reservation_id)
+    if request.method == 'POST' and request.FILES.get('billing_statement'):
+        reservation.billing_statement = request.FILES['billing_statement']
+        reservation.status = 'Billing Uploaded'
         reservation.save()
-
-        # Return success with the file URL
-        return JsonResponse({
-            'success': True, 
-            'file_url': reservation.billing_statement.url,
-            'message': 'Billing statement uploaded successfully'
-        })
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        
+        # Create notification for user about billing statement
+        Notification.objects.create(
+            user=reservation.user,
+            message=f"A billing statement has been uploaded for your reservation at {reservation.facility_use} on {reservation.date}. Please upload your payment receipt.",
+            notification_type='billing_uploaded'
+        )
+        
+        # Send email: Billing Form Available
+        send_reservation_email(
+            reservation.user,
+            'Billing Form Available',
+            'billing_form_available_email.html',
+            {'subject': 'Billing Form Available', 'user': reservation.user, 'reservation': reservation}
+        )
+        
+        return JsonResponse({'success': True, 'file_url': reservation.billing_statement.url})
+    return JsonResponse({'success': False, 'error': 'Invalid request.'})
 
 @login_required
 @user_passes_test(is_superuser)
@@ -519,14 +523,19 @@ def get_reservation_details(request, reservation_id):
         # Prepare security pass data (placeholder for now)
         pass_data = {
             'id': reservation_id,
-            'file_url': None,  # Update when you implement security pass
+            'file_url': reservation.security_pass.url if reservation.security_pass else None,
+            'returned_url': reservation.security_pass_returned.url if reservation.security_pass_returned else None,
+            'can_upload': reservation.status in ['Payment Approved', 'Needs Security Pass', 'Security Pass Needed'] and not reservation.security_pass,
+            'status': reservation.security_pass_status,
+            'rejection_reason': reservation.security_pass_rejection_reason or '',
         }
 
         return JsonResponse({
             'billing': billing_data,
             'payment': payment_data,
             'pass': pass_data,
-            'status': reservation.status
+            'status': reservation.status,
+            'admin_approval_count': len(reservation.admin_approvals or {}),
         })
 
     except Exception as e:
@@ -541,6 +550,13 @@ def upload_security_pass(request, reservation_id):
         reservation.status = 'Security Pass Issued'
         reservation.security_pass_status = 'Pending'
         reservation.save()
+        # Send email: Security Pass Released (moved here from payment verification)
+        send_reservation_email(
+            reservation.user,
+            'Security Pass Form Released',
+            'security_pass_released_email.html',
+            {'subject': 'Security Pass Form Released', 'user': reservation.user, 'reservation': reservation}
+        )
         return JsonResponse({'success': True, 'file_url': reservation.security_pass.url})
     elif request.method == 'POST':
         return JsonResponse({'success': False, 'error': 'No file uploaded.'})
@@ -554,6 +570,22 @@ def confirm_security_pass(request, reservation_id):
         reservation.security_pass_status = 'Confirmed'
         reservation.status = 'Completed'
         reservation.save()
+        
+        # Create notification for user about completed reservation
+        Notification.objects.create(
+            user=reservation.user,
+            message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been completed. The security pass has been confirmed.",
+            notification_type='reservation_completed'
+        )
+        
+        # Send email: Reservation Confirmed
+        send_reservation_email(
+            reservation.user,
+            'Reservation Confirmed',
+            'reservation_confirmed_email.html',
+            {'subject': 'Reservation Confirmed', 'user': reservation.user, 'reservation': reservation}
+        )
+        
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request.'})
 

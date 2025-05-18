@@ -35,12 +35,6 @@
             <option value="Football Field">Football Field</option>
             <option value="Table Tennis Dug-out">Table Tennis Dug-out</option>
         </select>
-        <select id="status-filter">
-            <option value="all">All Statuses</option>
-            <option value="Approved">Approved</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
-        </select>
     </div>
     <div id="calendar"></div>
     <div id="tooltip" class="tooltip"></div>
@@ -55,7 +49,6 @@
         const calendarEl = document.getElementById('calendar');
         const tooltip = document.getElementById('tooltip');
         const facilityFilter = document.getElementById('facility-filter');
-        const statusFilter = document.getElementById('status-filter');
         
         // Fetch all events initially
         let allEvents = [];
@@ -63,19 +56,12 @@
         // Function to filter events based on selections
         function filterEvents() {
             const facilityValue = facilityFilter.value;
-            const statusValue = statusFilter.value;
             
             return allEvents.filter(event => {
                 // Filter by facility
                 if (facilityValue !== 'all' && event.title !== facilityValue) {
                     return false;
                 }
-                
-                // Filter by status
-                if (statusValue !== 'all' && event.extendedProps.status !== statusValue) {
-                    return false;
-                }
-                
                 return true;
             });
         }
@@ -106,15 +92,8 @@
             eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
             
             eventDidMount: function(info) {
-                // Color code events by status
-                if (info.event.extendedProps.status === 'Approved') {
-                    info.el.style.backgroundColor = '#28a745';  // Green
-                } else if (info.event.extendedProps.status === 'Pending') {
-                    info.el.style.backgroundColor = '#ffc107';  // Yellow
-                    info.el.style.color = '#000';
-                } else if (info.event.extendedProps.status === 'Rejected') {
-                    info.el.style.backgroundColor = '#dc3545';  // Red
-                }
+                // All events are completed, so they're all green
+                info.el.style.backgroundColor = '#28a745';  // Green for completed
             },
 
             eventMouseEnter: function(info) {
@@ -125,7 +104,6 @@
                     <strong>Date:</strong> ${info.event.start.toLocaleDateString()}<br>
                     <strong>Time:</strong> ${props.start_time} - ${props.end_time}<br>
                     <strong>Organization:</strong> ${props.organization}<br>
-                    <strong>Status:</strong> ${props.status}<br>
                     <strong>Event Type:</strong> ${props.event_type || 'N/A'}<br>
                 `;
                 tooltip.innerHTML = tooltipContent;
@@ -151,12 +129,8 @@
 
         calendar.render();
         
-        // Add event listeners to filters
+        // Add event listener to facility filter
         facilityFilter.addEventListener('change', function() {
-            calendar.getEventSources()[0].refetch();
-        });
-        
-        statusFilter.addEventListener('change', function() {
             calendar.getEventSources()[0].refetch();
         });
     });

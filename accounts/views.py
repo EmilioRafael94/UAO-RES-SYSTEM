@@ -1,3 +1,6 @@
+import random
+from django.core.mail import send_mail
+from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect
@@ -11,7 +14,8 @@ from user_portal.models import Profile
 
 
 def register(request):
-    if request.method == 'POST':
+    # Step 1: Registration details form
+    if request.method == 'POST' and not request.session.get('pending_registration'):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data.get('username')
@@ -24,42 +28,77 @@ def register(request):
                 form.add_error('email', "Email is already registered.")
             else:
                 try:
-                    # Create user without saving immediately
-                    user = form.save(commit=False)
-                    user.set_password(form.cleaned_data['password1'])
-
                     full_name = request.POST.get('full_name', '').strip()
                     if not full_name:
                         form.add_error(None, "Full name is required.")
                         raise ValueError("Full name is missing.")
-
                     name_parts = full_name.split(' ', 1)
-                    user.first_name = name_parts[0]
-                    user.last_name = name_parts[1] if len(name_parts) > 1 else ''
-                    user.save()
-
+                    first_name = name_parts[0]
+                    last_name = name_parts[1] if len(name_parts) > 1 else ''
                     role = form.cleaned_data['role']
                     phone = form.cleaned_data['phone']
                     course = form.cleaned_data['course'] if role == 'Student of XU' else ''
-
-                    Profile.objects.create(
-                        user=user,
-                        phone=phone,
-                        role=role,
-                        course=course
+                    password = form.cleaned_data['password1']
+                    # Generate 6-digit code
+                    verification_code = f"{random.randint(100000, 999999)}"
+                    # Store registration data in session
+                    request.session['pending_registration'] = {
+                        'username': username,
+                        'email': email,
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'role': role,
+                        'phone': phone,
+                        'course': course,
+                        'password': password,
+                        'verification_code': verification_code,
+                    }
+                    # Send email
+                    send_mail(
+                        'Your Verification Code',
+                        f'Your verification code is: {verification_code}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        fail_silently=False,
                     )
-
-                    messages.success(request, "Registration successful! Please log in.")
-                    return redirect('accounts:login')
-
-                except IntegrityError:
-                    form.add_error(None, "An unexpected error occurred. Please try again.")
+                    return render(request, 'register.html', {'code_step': True})
                 except Exception as e:
                     form.add_error(None, str(e))
+        return render(request, 'register.html', {'form': form})
+
+    # Step 2: Code verification form
+    elif request.method == 'POST' and request.session.get('pending_registration'):
+        code = request.POST.get('verification_code')
+        pending = request.session['pending_registration']
+        if code == pending['verification_code']:
+            try:
+                user = User.objects.create_user(
+                    username=pending['username'],
+                    email=pending['email'],
+                    password=pending['password'],
+                    first_name=pending['first_name'],
+                    last_name=pending['last_name'],
+                )
+                Profile.objects.create(
+                    user=user,
+                    phone=pending['phone'],
+                    role=pending['role'],
+                    course=pending['course'],
+                    is_verified=True,
+                    verification_code=None
+                )
+                del request.session['pending_registration']
+                messages.success(request, "Registration successful! Please log in.")
+                return redirect('accounts:login')
+            except Exception as e:
+                messages.error(request, f"Error creating account: {e}")
+                return redirect('accounts:register')
+        else:
+            messages.error(request, "Invalid verification code. Please try again.")
+            return render(request, 'register.html', {'code_step': True})
     else:
         form = CustomUserCreationForm()
-
-    return render(request, 'register.html', {'form': form})
+        return render(request, 'register.html', {'form': form})
 
 
 # Role-based redirect view

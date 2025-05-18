@@ -6,6 +6,7 @@ from datetime import datetime
 from .models import Profile
 from reservations.models import Reservation
 from user_portal.models import Notification
+from reservations.email_utils import send_reservation_email
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -14,39 +15,30 @@ def is_admin(user):
 @login_required
 @user_passes_test(is_admin)
 def admin_dashboard(request):
-    current_admin = request.user.username
-    all_reservations = Reservation.objects.all()
+    # Get all pending reservations
+    pending = Reservation.objects.filter(status='Pending').order_by('-date')
+    pending_count = pending.count()
 
-    # Pending: status is Pending and current admin has NOT approved or rejected
-    pending_reservations = [
-        res for res in Reservation.objects.filter(status='Pending').order_by('-date', '-created_at')
-        if current_admin not in (res.admin_approvals or {}) and current_admin not in (res.admin_rejections or {})
-    ]
+    # Get reservations approved by this specific admin
+    approved = Reservation.objects.filter(
+        admin_approvals__has_key=request.user.username
+    ).order_by('-date')[:5]  # Show last 5 approved
 
-    # Recently Approved: status is Admin Approved and approved by the current admin
-    recently_approved_reservations = [
-        res for res in Reservation.objects.filter(status='Admin Approved').order_by('-date', '-created_at')
-        if current_admin in (res.admin_approvals or {})
-    ][:10]
+    # Get all rejected reservations (keeping it as it was before)
+    rejected = Reservation.objects.filter(status='Rejected').order_by('-date')[:10]
 
-    # Recently Rejected: any reservation with status 'Rejected'
-    rejected_reservations = [
-        res for res in Reservation.objects.filter(status='Rejected').order_by('-date', '-created_at')
-    ][:10]
-
-    selected_reservation_id = request.GET.get('id')
+    # Get selected reservation if ID is provided
     selected_reservation = None
-    if selected_reservation_id:
-        selected_reservation = Reservation.objects.filter(id=selected_reservation_id).first()
-    if not selected_reservation and pending_reservations:
-        selected_reservation = pending_reservations[0] if pending_reservations else None
+    reservation_id = request.GET.get('id')
+    if reservation_id:
+        selected_reservation = get_object_or_404(Reservation, id=reservation_id)
 
     context = {
-        'pending': pending_reservations,
-        'approved': recently_approved_reservations,
-        'rejected': rejected_reservations,
+        'pending': pending,
+        'pending_count': pending_count,
+        'approved': approved,
+        'rejected': rejected,
         'selected_reservation': selected_reservation,
-        'pending_count': len(pending_reservations),
     }
     return render(request, 'admin_portal/admin_dashboard.html', context)
 
@@ -66,6 +58,13 @@ def approve_reservation(request, reservation_id):
         if len(reservation.admin_approvals) >= 4:
             reservation.status = 'Admin Approved'
             reservation.save()
+            # Send email: All admins approved
+            send_reservation_email(
+                reservation.user,
+                'Reservation Approved by Admins',
+                'reservation_approved_admins_email.html',
+                {'subject': 'Reservation Approved by Admins', 'user': reservation.user, 'reservation': reservation}
+            )
 
         # Create notification for the user about approval
         Notification.objects.create(
@@ -93,6 +92,14 @@ def reject_reservation(request, reservation_id):
         # Add admin rejection
         reservation.add_admin_rejection(admin_username, rejection_reason)
 
+        # Send email: Rejected
+        send_reservation_email(
+            reservation.user,
+            'Reservation Rejected',
+            'reservation_rejected_email.html',
+            {'subject': 'Reservation Rejected', 'user': reservation.user, 'reservation': reservation}
+        )
+
         # Create notification for the user about rejection
         Notification.objects.create(
             user=reservation.user,
@@ -114,7 +121,7 @@ def calendar_view(request):
 @login_required
 @user_passes_test(is_admin)
 def get_approved_reservations(request):
-    reservations = Reservation.objects.filter(status='Approved')
+    reservations = Reservation.objects.filter(status='Completed')
     events = []
 
     for res in reservations:
@@ -131,6 +138,7 @@ def get_approved_reservations(request):
                 'event_type': res.event_type,
                 'insider_count': res.insider_count,
                 'outsider_count': res.outsider_count,
+                'status': res.status,
             }
         })
     return JsonResponse(events, safe=False)

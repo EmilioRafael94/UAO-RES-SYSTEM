@@ -46,6 +46,11 @@
                 eventDisplay: 'block',
                 eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
 
+                eventDidMount: function(info) {
+                    // All events are completed, so they're all green
+                    info.el.style.backgroundColor = '#28a745';  // Green for completed
+                },
+
                 eventMouseEnter: function(info) {
                     const props = info.event.extendedProps;
                     const tooltipContent = `

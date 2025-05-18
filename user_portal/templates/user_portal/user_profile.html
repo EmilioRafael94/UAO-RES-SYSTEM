@@ -28,6 +28,23 @@
                     {% endif %}
                 </ul>
 
+                {% if not request.user.profile.is_verified %}
+                  <div class="alert alert-warning mt-3">
+                    <strong>Email not verified.</strong> Please verify your email to access all features.
+                    <form method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" name="send_verification_code" class="btn btn-warning btn-sm ms-2">Verify Email</button>
+                    </form>
+                  </div>
+                {% endif %}
+
+                {% if gmail_limit_reached %}
+                  <div class="alert alert-danger mt-3">
+                    <strong>Notice:</strong> Email sending limit for verification codes has been reached. Please try again tomorrow or contact support.<br>
+                    <span style="font-size:0.95em;">No verification codes can be sent at this time due to Gmail daily quota limits.</span>
+                  </div>
+                {% endif %}
+
                 <button class="btn btn-primary mt-4" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
 
                 <!-- Logout Form -->
@@ -99,5 +116,38 @@
     </div>
 </div>
 
+<!-- Verification Modal -->
+<div class="modal fade {% if show_verification_modal %}show d-block{% endif %}" id="verifyEmailModal" tabindex="-1" aria-labelledby="verifyEmailModalLabel" aria-hidden="true" style="{% if show_verification_modal %}display:block; background:rgba(0,0,0,0.5);{% endif %}">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="verifyEmailModalLabel">Verify Your Email</h5>
+        </div>
+        <div class="modal-body">
+          <label for="verification_code">Enter the 6-digit code sent to your Gmail:</label>
+          <input type="text" name="verification_code" id="verification_code" maxlength="6" required pattern="\d{6}" class="form-control">
+          {% if code_error %}
+            <div class="text-danger mt-2">{{ code_error }}</div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" name="verify_code" class="btn btn-success">Verify</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if show_verification_modal %}
+<script>
+  var modal = document.getElementById('verifyEmailModal');
+  if (modal) {
+    modal.classList.add('show');
+    modal.style.display = 'block';
+  }
+</script>
+{% endif %}
 
 {% endblock %}
