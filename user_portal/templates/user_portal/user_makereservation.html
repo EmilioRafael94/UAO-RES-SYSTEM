@@ -17,7 +17,18 @@
 
     <main class="user_makereservation-container">
         <h2>Reservation for the Use of the University Sports Facilities</h2>
-        <form method="POST">
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" id="reservationForm">
             {% csrf_token %}
 
             <!-- Organization Information -->
@@ -55,6 +66,7 @@
             <div class="make_reservation-form-group">
                 <label for="date">Date of Actual Use</label>
                 <input type="date" id="date" name="date" required>
+                <span id="dateAvailabilityMessage" class="availability-message"></span>
             </div>
 
             <div class="make_reservation-form-group">
@@ -156,40 +168,46 @@
     </main>
 
     <script>
-        document.querySelector('form').addEventListener('submit', function(e) {
-            // Check if a facility is selected from the dropdown
-            const facility = document.getElementById('facility').value;
-            if (!facility) {
-                e.preventDefault();
-                alert('Please select a facility');
-                return;
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('date');
+            const facilityInput = document.getElementById('facility');
+            const dateMessage = document.getElementById('dateAvailabilityMessage');
+            const form = document.getElementById('reservationForm');
+            let dateIsAvailable = true;
+
+            async function checkDateAvailability() {
+                const date = dateInput.value;
+                const facility = facilityInput.value;
+
+                if (!date || !facility) return;
+
+                try {
+                    const response = await fetch(`{% url 'user_portal:check_date_availability' %}?date=${date}&facility=${facility}`);
+                    const data = await response.json();
+
+                    dateIsAvailable = data.available;
+                    
+                    if (!data.available) {
+                        dateMessage.textContent = 'This date is already reserved for the selected facility.';
+                        dateMessage.style.color = 'red';
+                    } else {
+                        dateMessage.textContent = 'Date is available!';
+                        dateMessage.style.color = 'green';
+                    }
+                } catch (error) {
+                    console.error('Error checking date availability:', error);
+                }
             }
 
-            // Check if at least one event type is selected
-            const eventTypes = document.querySelectorAll('input[name="event_type"]:checked');
-            if (eventTypes.length === 0) {
-                e.preventDefault();
-                alert('Please select at least one event type');
-                return;
-            }
+            form.addEventListener('submit', function(e) {
+                if (!dateIsAvailable) {
+                    e.preventDefault();
+                    alert('Please select an available date. The current date is already reserved.');
+                }
+            });
 
-            // Validate time slots
-            const startTime = document.getElementById('start_time').value;
-            const endTime = document.getElementById('end_time').value;
-            if (startTime >= endTime) {
-                e.preventDefault();
-                alert('End time must be after start time');
-                return;
-            }
-
-            // Validate date
-            const date = document.getElementById('date').value;
-            const today = new Date().toISOString().split('T')[0];
-            if (date < today) {
-                e.preventDefault();
-                alert('Date cannot be in the past');
-                return;
-            }
+            dateInput.addEventListener('change', checkDateAvailability);
+            facilityInput.addEventListener('change', checkDateAvailability);
         });
     </script>
 </body>

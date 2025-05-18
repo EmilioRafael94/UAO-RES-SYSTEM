@@ -77,6 +77,12 @@ def user_makereservation(request):
             messages.error(request, 'Please fill in all required fields.')
             return redirect('user_portal:user_makereservation')
 
+        # Check if date is blocked
+        temp_reservation = Reservation()
+        if temp_reservation.is_date_blocked(date, facility):
+            messages.error(request, f'The selected date ({date}) is already reserved for {facility}. Please choose another date.')
+            return redirect('user_portal:user_makereservation')
+
         # Facilities Needed
         facility_keys = [
             'long_tables', 'mono_block_chairs', 'narra_chairs', 'podium', 'xu_seal', 'xu_logo',
@@ -600,3 +606,22 @@ def upload_security_pass(request, reservation_id):
         else:
             messages.error(request, "No file was uploaded. Please try again.")
     return redirect('user_portal:user_myreservation')
+
+@login_required
+def check_date_availability(request):
+    """AJAX endpoint to check if a date is available for reservation"""
+    date = request.GET.get('date')
+    facility = request.GET.get('facility')
+    
+    if not date or not facility:
+        return JsonResponse({
+            'available': False,
+            'error': 'Missing date or facility'
+        })
+    
+    temp_reservation = Reservation()
+    is_available = temp_reservation.check_date_availability(date, facility)
+    
+    return JsonResponse({
+        'available': is_available
+    })

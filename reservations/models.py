@@ -162,3 +162,16 @@ class Reservation(models.Model):
             }
             for admin, data in approvals.items()
         ]
+
+    def check_date_availability(self, date, facility):
+        """Check if a date is available for reservation"""
+        existing_reservations = Reservation.objects.filter(
+            facility=facility,
+            date=date,
+            status__in=['Approved', 'Admin Approved', 'Payment Approved', 'Security Pass Issued', 'Completed']
+        )
+        return not existing_reservations.exists()
+
+    def is_date_blocked(self, date, facility):
+        """Check if date is blocked for a specific facility"""
+        return not self.check_date_availability(date, facility)
