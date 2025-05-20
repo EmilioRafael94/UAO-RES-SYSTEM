@@ -1,0 +1,321 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Profile</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        
+        .welcome-section {
+            background: #fff;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 2px solid #000;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .welcome-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 18px;
+            border: 1px solid #6a1b9a;
+            pointer-events: none;
+            margin: 6px;
+        }
+        
+        .welcome-text {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .user-name {
+            font-size: 42px;
+            font-weight: bold;
+        }
+        
+        .profile-details {
+            background: #fff;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            border: 2px solid #000;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .profile-details::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 18px;
+            border: 1px solid #6a1b9a;
+            pointer-events: none;
+            margin: 6px;
+        }
+        
+        .profile-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #0074D9;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .profile-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-info {
+            flex-grow: 1;
+        }
+        
+        .profile-header {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .profile-field {
+            font-size: 18px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .edit-button {
+            background-color: #0074D9;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        .edit-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .logout-button {
+            background-color: #4C331F;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+            width: 200px;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-button:hover {
+            background-color: #342315;
+        }
+        
+        /* Edit profile modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 60%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .close-button {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        .save-button {
+            background-color: #0074D9;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s;
+        }
+        
+        .save-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="navbar-left">
+        <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+        <span class="navbar-title">Xavier University Athletics Office</span>
+    </div>
+    <div class="navbar-right">
+        <a href="{% url 'admin_portal:admin_dashboard' %}" class="nav-link">Dashboard</a>
+        <a href="{% url 'admin_portal:calendar_view' %}" class="nav-link">View Calendar</a>
+        <a href="{% url 'admin_portal:admin_profile' %}">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        </a>
+    </div>
+</div>
+
+<div class="profile-container">
+    <!-- Welcome section -->
+    <div class="welcome-section">
+        <div class="welcome-text">WELCOME!</div>
+        <div class="user-name">{{ user.username }}</div>
+    </div>
+    
+    <!-- Profile details -->
+    <div class="profile-details">
+        <div class="profile-image">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile">
+        </div>
+        <div class="profile-info">
+            <div class="profile-header">PROFILE</div>
+            <div class="profile-field">NAME: {{ user.get_full_name|default:user.username }}</div>
+            <div class="profile-field">EMAIL: {{ user.email }}</div>
+            <div class="profile-field">COURSE: {{ user.profile.course|default:"Not specified" }}</div>
+            <div class="profile-field">PHONE: {{ user.profile.phone|default:"Not specified" }}</div>
+            
+            <button id="editProfileBtn" class="edit-button">Edit</button>
+        </div>
+    </div>
+    
+    <!-- Logout button -->
+    <form action="{% url 'accounts:logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="logout-button">LOG-OUT</button>
+    </form>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">Edit Profile</div>
+            <span class="close-button">&times;</span>
+        </div>
+        
+        <form method="post" action="{% url 'admin_portal:update_profile' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" value="{{ user.get_full_name|default:user.username }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="course">Course:</label>
+                <input type="text" id="course" name="course" value="{{ user.profile.course|default:'' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="text" id="phone" name="phone" value="{{ user.profile.phone|default:'' }}">
+            </div>
+            
+            <button type="submit" class="save-button">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Modal functionality
+    const modal = document.getElementById("editProfileModal");
+    const editBtn = document.getElementById("editProfileBtn");
+    const closeBtn = document.querySelector(".close-button");
+    
+    editBtn.onclick = function() {
+        modal.style.display = "block";
+    }
+    
+    closeBtn.onclick = function() {
+        modal.style.display = "none";
+    }
+    
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+</head>
+<body>
+ 
+
+    <main class="user_makereservation-container">
+        <h2>Reservation for the Use of the University Sports Facilities</h2>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" id="reservationForm">
+            {% csrf_token %}
+
+            <!-- Organization Information -->
+            <div class="make_reservation-form-group">
+                <label for="organization">Name of Unit/School/Office/Organization</label>
+                <input type="text" id="organization" name="organization" placeholder="e.g., School of Business and Management">
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="representative">Name of Representative</label>
+                <input type="text" id="representative" name="representative" required>
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="contact_number">Contact No.</label>
+                <input type="tel" id="contact_number" name="contact_number" pattern="[0-9]{10,11}" placeholder="e.g., 09123456789" required>
+            </div>
+
+            <!-- Reservation Information -->
+            <div class="make_reservation-form-group">
+                <label for="date_reserved">Date Reserved</label>
+                <input type="date" id="date_reserved" name="date_reserved" required>
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="insider_count">Estimated No. of Participants (Insider)</label>
+                <input type="number" id="insider_count" name="insider_count" min="0">
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="outsider_count">Estimated No. of Participants (Outsider)</label>
+                <input type="number" id="outsider_count" name="outsider_count" min="0">
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="date">Date of Actual Use</label>
+                <input type="date" id="date" name="date" required>
+                <span id="dateAvailabilityMessage" class="availability-message"></span>
+            </div>
+
+            <div class="make_reservation-form-group">
+                <label for="start_time">Start Time</label>
+                <input type="time" name="start_time" id="start_time" required>
+            </div>
+            
+            <div class="make_reservation-form-group">
+                <label for="end_time">End Time</label>
+                <input type="time" name="end_time" id="end_time" required>
+            </div>
+
+            <!-- Facilities -->
+            <div class="make_reservation-form-group">
+                <label for="facility">Facility to be used</label>
+                <select name="facility" id="facility" required>
+                    <option value="">Select a facility</option>
+                    <option value="Gymnasium">Gymnasium</option>
+                    <option value="Covered Court">Covered Court</option>
+                    <option value="Football Field">Football Field</option>
+                    <option value="Table Tennis Dug-out">Table Tennis Dug-out</option>
+                </select>
+            </div>
+
+            <!-- Event Type -->
+            <div class="make_reservation-form-group">
+                <label>Type of Event (Select at least one)</label>
+                <div class="make_reservation-checkbox-group">
+                    <label><input type="checkbox" name="event_type" value="Sports Activities" required> Sports-Related Activities</label>
+                    <label><input type="checkbox" name="event_type" value="General Assembly"> General Assembly</label>
+                    <label><input type="checkbox" name="event_type" value="Forum"> Forum/Symposium</label>
+                    <label><input type="checkbox" name="event_type" value="Others"> Others</label>
+                </div>
+            </div>
+
+            <!-- Other Facilities -->
+            <div class="make_reservation-form-group">
+                <label>Other Facilities Needed (Indicate Quantity)</label>
+                <div class="make_reservation-facilities-grid">
+                    <!-- Tables 1–4 -->
+                    <table>
+                        <tr><td>Long Tables</td><td><input type="number" name="long_tables_quantity" min="0"></td></tr>
+                        <tr><td>Mono Block Chairs</td><td><input type="number" name="mono_block_chairs_quantity" min="0"></td></tr>
+                        <tr><td>Narra Chairs</td><td><input type="number" name="narra_chairs_quantity" min="0"></td></tr>
+                        <tr><td>Podium</td><td><input type="number" name="podium_quantity" min="0"></td></tr>
+                        <tr><td>XU Seal</td><td><input type="number" name="xu_seal_quantity" min="0"></td></tr>
+                        <tr><td>XU Logo</td><td><input type="number" name="xu_logo_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Sound System</td><td><input type="number" name="sound_system_quantity" min="0"></td></tr>
+                        <tr><td>Bulletin Board</td><td><input type="number" name="bulletin_board_quantity" min="0"></td></tr>
+                        <tr><td>Scaffolding</td><td><input type="number" name="scaffolding_quantity" min="0"></td></tr>
+                        <tr><td>Flag</td><td><input type="number" name="flag_quantity" min="0"></td></tr>
+                        <tr><td>Philippine Flag</td><td><input type="number" name="philippine_flag_quantity" min="0"></td></tr>
+                        <tr><td>XU Flag</td><td><input type="number" name="xu_flag_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Ceiling Fans</td><td><input type="number" name="ceiling_fans_quantity" min="0"></td></tr>
+                        <tr><td>Stand Fans</td><td><input type="number" name="stand_fans_quantity" min="0"></td></tr>
+                        <tr><td>Iwata Fans</td><td><input type="number" name="iwata_fans_quantity" min="0"></td></tr>
+                        <tr><td>Stage Non-Acrylic</td><td><input type="number" name="stage_non_acrylic_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Digital Clock</td><td><input type="number" name="digital_clock_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Others (Please specify)</td><td><input type="text" name="others_specify"></td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Manpower Needed -->
+            <div class="make_reservation-form-group">
+                <label>Manpower Needed</label>
+                <div class="make_reservation-table-container">
+                    <table>
+                        <tr><td>Security</td><td><input type="number" name="security_quantity" min="0"></td></tr>
+                        <tr><td>Janitor</td><td><input type="number" name="janitor_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Electrician</td><td><input type="number" name="electrician_quantity" min="0"></td></tr>
+                        <tr><td>Technician</td><td><input type="number" name="technician_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Assistant Technician</td><td><input type="number" name="assistant_technician_quantity" min="0"></td></tr>
+                        <tr><td>Digital Clock Operator</td><td><input type="number" name="digital_clock_operator_quantity" min="0"></td></tr>
+                    </table>
+                    <table>
+                        <tr><td>Plumber</td><td><input type="number" name="plumber_quantity" min="0"></td></tr>
+                        <tr><td>Other:</td><td><input type="number" name="other_manpower_quantity" min="0"></td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="make_reservation-form-group">
+                <input type="submit" value="Submit">
+            </div>
+        </form>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('date');
+            const facilityInput = document.getElementById('facility');
+            const dateMessage = document.getElementById('dateAvailabilityMessage');
+            const form = document.getElementById('reservationForm');
+            let dateIsAvailable = true;
+
+            async function checkDateAvailability() {
+                const date = dateInput.value;
+                const facility = facilityInput.value;
+
+                if (!date || !facility) return;
+
+                try {
+                    const response = await fetch(`{% url 'user_portal:check_date_availability' %}?date=${date}&facility=${facility}`);
+                    const data = await response.json();
+
+                    dateIsAvailable = data.available;
+                    
+                    if (!data.available) {
+                        dateMessage.textContent = 'This date is already reserved for the selected facility.';
+                        dateMessage.style.color = 'red';
+                    } else {
+                        dateMessage.textContent = 'Date is available!';
+                        dateMessage.style.color = 'green';
+                    }
+                } catch (error) {
+                    console.error('Error checking date availability:', error);
+                }
+            }
+
+            form.addEventListener('submit', function(e) {
+                if (!dateIsAvailable) {
+                    e.preventDefault();
+                    alert('Please select an available date. The current date is already reserved.');
+                }
+            });
+
+            dateInput.addEventListener('change', checkDateAvailability);
+            facilityInput.addEventListener('change', checkDateAvailability);
+        });
+    </script>
+</body>
+</html>
+{% endblock %}
