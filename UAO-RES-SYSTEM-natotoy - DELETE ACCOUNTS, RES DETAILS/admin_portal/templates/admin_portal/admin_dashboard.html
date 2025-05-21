@@ -1,0 +1,512 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{% static 'admin_portal/style.css' %}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="navbar-left">
+        <img src="{% static 'admin_portal/xavier_logo.png' %}" alt="XU Logo" class="xu-logo">
+        <span class="navbar-title">Xavier University Athletics Office</span>
+    </div>
+    <div class="navbar-right">
+        <a href="{% url 'admin_portal:admin_dashboard' %}" class="nav-link">Dashboard</a>
+        <a href="{% url 'admin_portal:calendar_view' %}" class="nav-link">View Calendar</a>
+        <a href="{% url 'admin_portal:admin_profile' %}">
+            <img src="{% static 'admin_portal/profile_icon.png' %}" alt="Profile" class="profile-icon">
+        </a>
+    </div>
+</div>
+
+<!-- Display messages -->
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="message {{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="dashboard-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Admin Dashboard</h2>
+
+        <div class="section">
+            <h3>Pending Reservations ({{ pending_count }})</h3>
+            <ul>
+                {% for reservation in pending %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No pending reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>Recently Approved</h3>
+            <ul>
+                {% for reservation in approved %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No approved reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>Recently Rejected</h3>
+            <ul>
+                {% for reservation in rejected %}
+                <li>
+                    <a href="{% url 'admin_portal:admin_dashboard' %}?id={{ reservation.id }}" class="{% if selected_reservation.id == reservation.id %}active{% endif %}">
+                        {{ reservation.user.username }} - {{ reservation.facility }} ({{ reservation.date }})
+                    </a>
+                </li>
+                {% empty %}
+                <li>No rejected reservations</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% if selected_reservation %}
+        <div class="reservation-card">
+            <div class="reservation-header">
+                <h2>Reservation #R-{{ selected_reservation.id }}</h2>
+                <span class="status-badge {% if selected_reservation.status == 'Pending' %}status-pending{% elif selected_reservation.status == 'Admin Approved' %}status-approved{% elif selected_reservation.status == 'Rejected' %}status-rejected{% endif %}">
+                    {{ selected_reservation.status }}
+                </span>
+            </div>
+
+            <div class="reservation-details">
+                <div class="detail-section">
+                    <h3>Basic Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>User</label>
+                            <span>{{ selected_reservation.user.username }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Organization</label>
+                            <span>{{ selected_reservation.organization|default:"N/A" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Representative</label>
+                            <span>{{ selected_reservation.representative|default:"N/A" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Contact</label>
+                            <span>{{ selected_reservation.contact_number|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Event Details</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Facility</label>
+                            <span>{{ selected_reservation.facility|default:"N/A" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Date</label>
+                            <span>{{ selected_reservation.date|date:"F d, Y" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Time</label>
+                            <span>{{ selected_reservation.start_time|time:"h:i A" }} - {{ selected_reservation.end_time|time:"h:i A" }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Event Type</label>
+                            <span>{{ selected_reservation.event_type|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Participants</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Insider Count</label>
+                            <span>{{ selected_reservation.insider_count }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Outsider Count</label>
+                            <span>{{ selected_reservation.outsider_count }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if selected_reservation.facilities_needed %}
+                <div class="detail-section">
+                    <h3>Facilities Needed</h3>
+                    <div class="facilities-grid">
+                        {% for facility, quantity in selected_reservation.facilities_needed.items %}
+                        <div class="facility-item">
+                            <span class="facility-name">{{ facility }}</span>
+                            <span class="facility-quantity">{{ quantity }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if selected_reservation.manpower_needed %}
+                <div class="detail-section">
+                    <h3>Manpower Needed</h3>
+                    <div class="manpower-grid">
+                        {% for role, quantity in selected_reservation.manpower_needed.items %}
+                        <div class="manpower-item">
+                            <span class="role-name">{{ role }}</span>
+                            <span class="role-quantity">{{ quantity }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if selected_reservation.reasons %}
+                <div class="detail-section">
+                    <h3>Additional Information</h3>
+                    <div class="reasons-box">
+                        {{ selected_reservation.reasons }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="detail-section">
+                    <h3>Admin Actions</h3>
+                    <div class="admin-actions">
+                        <div class="approvals-section">
+                            <h4>Approvals</h4>
+                            {% if selected_reservation.admin_approvals %}
+                                {% for admin, details in selected_reservation.admin_approvals.items %}
+                                <div class="admin-action-item approved">
+                                    <div class="admin-info">
+                                        <span class="admin-name">{{ admin }}</span>
+                                        <span class="action-time">{{ details.timestamp|date:"M d, Y h:i A" }}</span>
+                                    </div>
+                                    {% if details.notes %}
+                                    <div class="admin-notes">
+                                        {{ details.notes }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-actions">No approvals yet</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="rejections-section">
+                            <h4>Rejections</h4>
+                            {% if selected_reservation.admin_rejections %}
+                                {% for admin, details in selected_reservation.admin_rejections.items %}
+                                <div class="admin-action-item rejected">
+                                    <div class="admin-info">
+                                        <span class="admin-name">{{ admin }}</span>
+                                        <span class="action-time">{{ details.timestamp|date:"M d, Y h:i A" }}</span>
+                                    </div>
+                                    {% if details.reason %}
+                                    <div class="rejection-reason">
+                                        {{ details.reason }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-actions">No rejections yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if selected_reservation.status == 'Pending' and user.username not in selected_reservation.admin_approvals and user.username not in selected_reservation.admin_rejections %}
+            <div class="action-buttons">
+                <form method="POST" action="{% url 'admin_portal:approve_reservation' selected_reservation.id %}" class="approve-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="admin_notes">Admin Notes (Optional):</label>
+                        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="3" placeholder="Add any notes or instructions for the user..."></textarea>
+                    </div>
+                    <button type="submit" class="approve">APPROVE</button>
+                </form>
+                <form method="POST" action="{% url 'admin_portal:reject_reservation' selected_reservation.id %}" class="reject-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="rejection_reason">Rejection Reason (Required):</label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required placeholder="Please provide a reason for rejection..."></textarea>
+                    </div>
+                    <button type="submit" class="reject">REJECT</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="no-selection">
+            <p>Select a reservation from the sidebar to view details.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .reservation-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 15px;
+        margin: 15px;
+    }
+
+    .reservation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .reservation-header h2 {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+
+    .detail-section {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .detail-section h3 {
+        color: #2c3e50;
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .detail-item label {
+        font-size: 11px;
+        color: #6c757d;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-item span {
+        font-size: 13px;
+        color: #2c3e50;
+        font-weight: 500;
+    }
+
+    .facilities-grid, .manpower-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .facility-item, .manpower-item {
+        background: white;
+        padding: 8px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .facility-name, .role-name {
+        font-size: 13px;
+        color: #2c3e50;
+    }
+
+    .facility-quantity, .role-quantity {
+        font-size: 13px;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .admin-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .admin-action-item {
+        background: white;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .admin-action-item.approved {
+        border-left: 3px solid #28a745;
+    }
+
+    .admin-action-item.rejected {
+        border-left: 3px solid #dc3545;
+    }
+
+    .admin-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+    .admin-name {
+        font-weight: 500;
+        color: #2c3e50;
+        font-size: 13px;
+    }
+
+    .action-time {
+        font-size: 11px;
+        color: #6c757d;
+    }
+
+    .admin-notes, .rejection-reason {
+        font-size: 13px;
+        color: #495057;
+        padding: 6px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+
+    .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .approve-form, .reject-form {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 4px;
+        color: #495057;
+        font-size: 13px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 6px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .approve, .reject {
+        width: 100%;
+        padding: 8px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .approve {
+        background: #28a745;
+        color: white;
+    }
+
+    .reject {
+        background: #dc3545;
+        color: white;
+    }
+
+    .no-actions {
+        color: #6c757d;
+        font-style: italic;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .reasons-box {
+        background: white;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #495057;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    @media (max-width: 1200px) {
+        .detail-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .facilities-grid, .manpower-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-actions {
+            grid-template-columns: 1fr;
+        }
+        .action-buttons {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+</body>
+</html>

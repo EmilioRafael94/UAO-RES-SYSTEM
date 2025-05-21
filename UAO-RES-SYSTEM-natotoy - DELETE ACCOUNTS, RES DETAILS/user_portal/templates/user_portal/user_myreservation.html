@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>My Reservations</h2>
+    {% if reservations %}
+        <div class="row">
+        {% for reservation in reservations %}
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <strong>Reservation #R-{{ reservation.id }}</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Organization:</strong> {{ reservation.organization }}</p>
+                                <p><strong>Representative:</strong> {{ reservation.representative }}</p>
+                                <p><strong>Date Reserved:</strong> {{ reservation.date_reserved|date:"M d, Y" }}</p>
+                                <p><strong>Date(s) of Actual Use:</strong> {{ reservation.display_dates }}</p>
+                                <p><strong>Insider Count:</strong> {{ reservation.insider_count }}</p>
+                                <p><strong>Outsider Count:</strong> {{ reservation.outsider_count }}</p>
+                                <p><strong>Start Time:</strong> {{ reservation.start_time|time:"h:i A" }}</p>
+                                <p><strong>End Time:</strong> {{ reservation.end_time|time:"h:i A" }}</p>
+                                <p><strong>Facility Use:</strong> {{ reservation.facility_use|default:"None" }}</p>
+                                <p><strong>Event Type:</strong> {{ reservation.event_type|default:"N/A" }}</p>
+                                <p><strong>Status:</strong> {{ reservation.display_status }}</p>
+                                {% if reservation.letter %}
+                                <p><strong>Request Letter:</strong> <a href="{{ reservation.letter.url }}" target="_blank">View Letter</a></p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Facilities Needed:</strong></p>
+                                <ul class="mb-0">
+                                {% for facility, quantity in reservation.facilities_needed.items %}
+                                    <li>{{ facility }}: {{ quantity }}</li>
+                                {% empty %}
+                                    <li>None</li>
+                                {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Manpower Needed:</strong></p>
+                                <ul class="mb-0">
+                                {% for manpower, quantity in reservation.manpower_needed.items %}
+                                    <li>{{ manpower }}: {{ quantity }}</li>
+                                {% empty %}
+                                    <li>None</li>
+                                {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            {% if reservation.status != 'Completed' %}
+                            <a href="{% url 'user_portal:edit_reservation' reservation.id %}" class="btn btn-primary btn-sm">Edit</a>
+                            <form action="{% url 'user_portal:delete_reservation' reservation.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        <hr>
+                        <!-- Billing & Payment Info -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h5>Billing & Payment</h5>
+                                <table class="table table-bordered mb-0">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Billing File</th>
+                                            <th>Receipt Status</th>
+                                            <th>Upload</th>
+                                            <th>Status</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                {% if reservation.billing_statement %}
+                                                    <a href="{{ reservation.billing_statement.url }}" target="_blank">Download</a>
+                                                {% elif reservation.status == 'Admin Approved' %}
+                                                    Billing file pending
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.payment_receipt %}
+                                                    Uploaded
+                                                {% else %}
+                                                    Not Uploaded
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.status == 'Billing Uploaded' and not reservation.payment_receipt %}
+                                                <form action="{% url 'user_portal:upload_receipt' reservation.id %}" method="post" enctype="multipart/form-data">
+                                                    {% csrf_token %}
+                                                    <input type="file" name="payment_receipt" required>
+                                                    <button type="submit" class="btn btn-success btn-sm">Upload Receipt</button>
+                                                </form>
+                                                {% elif reservation.payment_receipt %}
+                                                    <a href="{{ reservation.payment_receipt.url }}" target="_blank">View Receipt</a>
+                                                {% else %}
+                                                    &mdash;
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.status == 'Payment Approved' %}
+                                                    Approved
+                                                {% elif reservation.status == 'Payment Rejected' %}
+                                                    Rejected
+                                                {% elif reservation.payment_receipt %}
+                                                    Pending
+                                                {% else %}
+                                                    &mdash;
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.status == 'Payment Rejected' and reservation.payment_rejection_reason %}
+                                                    {{ reservation.payment_rejection_reason }}
+                                                {% else %}
+                                                    &mdash;
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Security Pass Table -->
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <h5>Security Pass</h5>
+                                <table class="table table-bordered mb-0">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Security Pass File</th>
+                                            <th>Return Status</th>
+                                            <th>Upload</th>
+                                            <th>Status</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                {% if reservation.security_pass %}
+                                                    <a href="{{ reservation.security_pass.url }}" target="_blank">Download</a>
+                                                {% elif reservation.status == 'Payment Approved' %}
+                                                    Security pass pending
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.security_pass_returned %}
+                                                    Uploaded
+                                                {% else %}
+                                                    Not Uploaded
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.status == 'Security Pass Issued' and not reservation.security_pass_returned %}
+                                                <form action="{% url 'user_portal:upload_security_pass' reservation.id %}" method="post" enctype="multipart/form-data">
+                                                    {% csrf_token %}
+                                                    <input type="file" name="security_pass_returned" required>
+                                                    <button type="submit" class="btn btn-success btn-sm">Upload Security Pass</button>
+                                                </form>
+                                                {% elif reservation.security_pass_returned %}
+                                                    <a href="{{ reservation.security_pass_returned.url }}" target="_blank">View Returned Pass</a>
+                                                {% else %}
+                                                    &mdash;
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.security_pass_status %}
+                                                    {{ reservation.security_pass_status }}
+                                                {% else %}
+                                                    Pending
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if reservation.security_pass_status == 'Rejected' and reservation.security_pass_rejection_reason %}
+                                                    {{ reservation.security_pass_rejection_reason }}
+                                                {% else %}
+                                                    &mdash;
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- End Security Pass Table -->
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+    <div class="alert alert-info">
+        You have no reservations yet. <a href="{% url 'user_portal:user_makereservation' %}" class="alert-link">Make a reservation</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

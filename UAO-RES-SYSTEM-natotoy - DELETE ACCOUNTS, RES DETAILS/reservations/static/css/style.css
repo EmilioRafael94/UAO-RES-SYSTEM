@@ -1,0 +1,386 @@
+/* REGISTRATION CSS*/
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #F1F5F9;
+    color: #0F172A;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container for the form */
+.container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Heading style */
+h2 {
+    text-align: center;
+    color: #1E3A8A;
+    margin-bottom: 20px;
+}
+
+/* Form group styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1E3A8A;
+}
+
+/* Input and select field styles */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="file"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #F8FAFC;
+    color: #0F172A;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus {
+    border-color: #3B82F6;
+    outline: none;
+    background-color: #ffffff;
+}
+
+/* Button style */
+button.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #1E3A8A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button.btn-primary:hover {
+    background-color: #3B82F6;
+}
+
+/* Links */
+a {
+    color: #1E3A8A;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Messages and validation styles */
+.messages p {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.messages .success {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.messages .error {
+    background-color: #FECACA;
+    color: #991B1B;
+}
+
+small {
+    font-size: 0.9rem;
+    color: #EF4444;
+}
+
+/* Hidden elements (for toggling visibility) */
+.hidden {
+    display: none;
+}
+
+/* Form error messages */
+.form-errors p {
+    background-color: #FFE4E6;
+    color: #9F1239;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+
+    button.btn-primary {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+}
+/* END OF REGISTRATION CSS */
+
+/*LOGIN CSS*/
+/* General body and container styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #F1F5F9;
+    color: #0F172A;
+    margin: 0;
+    padding: 0;
+}
+
+/* Centered login container */
+.container {
+    max-width: 600px;
+    margin: 100px auto;
+    padding: 40px;
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Login heading style */
+h2 {
+    text-align: center;
+    color: #1E3A8A;
+    margin-bottom: 20px;
+}
+
+/* Form group styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1E3A8A;
+}
+
+/* Input field styles */
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #F8FAFC;
+    color: #0F172A;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+    border-color: #3B82F6;
+    outline: none;
+    background-color: #ffffff;
+}
+
+/* Login button style */
+button.btn-login {
+    width: 100%;
+    padding: 12px;
+    background-color: #1E3A8A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button.btn-login:hover {
+    background-color: #3B82F6;
+}
+
+/* Forgot password link */
+.forgot-password {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.forgot-password a {
+    color: #1E3A8A;
+    text-decoration: none;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
+
+/* Error message styles */
+.messages p {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.messages .error {
+    background-color: #FECACA;
+    color: #991B1B;
+}
+
+.form-errors p {
+    background-color: #FFE4E6;
+    color: #9F1239;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+/* Small text for additional instructions */
+small {
+    font-size: 0.9rem;
+    color: #EF4444;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+
+    button.btn-login {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+}
+
+/*END OF LOGIN CSS*/
+
+
+/* Custom profile styling FOR BASE.HTML */
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+}
+
+.card h4 {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.card p {
+    font-size: 1rem;
+    color: #6c757d;
+}
+
+.modal-dialog {
+    max-width: 800px;
+}
+
+
+/* user_portal/styles.css */
+
+/* Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container */
+.user-dashboard-content {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+/* Header */
+h1 {
+    font-size: 2.5rem;
+    color: #4e4e4e;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Subheadings */
+h2 {
+    font-size: 1.8rem;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+/* Reservation Summary */
+.user-reservation-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-reservation-summary li {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Notifications */
+.user-notifications {
+    margin-top: 2rem;
+}
+
+.user-notifications ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-notifications li {
+    background-color: #e9ecef;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+}
+
+.user-notifications p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-dashboard-content {
+        padding: 1.5rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+}
