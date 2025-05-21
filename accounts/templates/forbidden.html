@@ -1,0 +1,9 @@
+{% extends "login.html" %}
+{% block content %}
+<div class="alert alert-danger" style="margin-top: 2em;">
+    <h2>Google Login Forbidden</h2>
+    <p>Sorry, you are not allowed to log in with this Google account.<br>
+    Only @my.xu.edu.ph email addresses are permitted.</p>
+    <a href="/accounts/login/" class="btn btn-primary">Back to Login</a>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'superuser_portal/base_superuser.html' %}
+
+{% block title %}Superuser Dashboard{% endblock %}
+
+{% block content %}
+    <div class="dashboard-container">
+        <!-- KPI Cards -->
+        <div class="kpi-section">
+            <div class="kpi-card">
+                <h3>Unverified Payments</h3>
+                <div class="kpi-number">{{ unverified_payments_count }}</div>
+                <a href="{% url 'superuser_portal:manage_reservations' %}?filter=needs_payment" class="kpi-link">View All</a>
+            </div>
+            
+            <div class="kpi-card">
+                <h3>Pending Passes</h3>
+                <div class="kpi-number">{{ pending_passes_count }}</div>
+                <a href="{% url 'superuser_portal:manage_reservations' %}?filter=needs_pass" class="kpi-link">View All</a>
+            </div>
+            
+            <div class="kpi-card">
+                <h3>Today's Reservations</h3>
+                <div class="kpi-number">{{ todays_reservations_count }}</div>
+                <a href="{% url 'superuser_portal:manage_reservations' %}?filter=today" class="kpi-link">View All</a>
+            </div>
+            
+            <div class="kpi-card">
+                <h3>Total Active Users</h3>
+                <div class="kpi-number">{{ active_users_count }}</div>
+                <a href="{% url 'superuser_portal:user_roles' %}" class="kpi-link">Manage Users</a>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="action-buttons">
+                <a href="{% url 'superuser_portal:manage_reservations' %}?filter=needs_payment" class="action-button">
+                    Verify Payments
+                </a>
+                <a href="{% url 'superuser_portal:manage_reservations' %}?filter=needs_pass" class="action-button">
+                    Review Security Passes
+                </a>
+                <a href="{% url 'superuser_portal:system_settings' %}" class="action-button">
+                    Manage Facilities
+                </a>
+                <a href="{% url 'superuser_portal:user_roles' %}" class="action-button">
+                    Manage User Roles
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+            <h2>Recent Activity</h2>
+            <div class="activity-list">
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                    <span class="activity-time">{{ activity.timestamp }}</span>
+                    <span class="activity-text">{{ activity.description }}</span>
+                </div>
+                {% empty %}
+                <p>No recent activity</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
