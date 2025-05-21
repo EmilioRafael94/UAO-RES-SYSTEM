@@ -201,6 +201,15 @@
                 </div>
                 {% endif %}
 
+                {% if selected_reservation.letter %}
+                <div class="detail-section">
+                    <h3>Request Letter</h3>
+                    <div class="reasons-box">
+                        <a href="{{ selected_reservation.letter.url }}" target="_blank">View Uploaded Letter</a>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="detail-section">
                     <h3>Admin Actions</h3>
                     <div class="admin-actions">

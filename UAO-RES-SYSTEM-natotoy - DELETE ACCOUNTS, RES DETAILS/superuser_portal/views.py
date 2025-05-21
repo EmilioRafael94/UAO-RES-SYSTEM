@@ -531,6 +531,8 @@ def get_reservation_details(request, reservation_id):
             'insider_count': reservation.insider_count,
             'outsider_count': reservation.outsider_count,
             'facility_use': reservation.facility_use,
+            # --- Add letter file if present ---
+            'letter_url': reservation.letter.url if reservation.letter else None,
         }
 
         # Resource requirements section

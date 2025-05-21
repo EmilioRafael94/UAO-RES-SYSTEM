@@ -405,6 +405,12 @@ function updateBasicInfoSection(basicInfo) {
                     <span>${basicInfo.outsider_count}</span>
                 </div>
             </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Request Letter:</label>
+                    ${basicInfo.letter_url ? `<a href="${basicInfo.letter_url}" target="_blank">View Letter</a>` : '<span>No letter uploaded</span>'}
+                </div>
+            </div>
         </div>
     `;
     document.getElementById('basicInfo').innerHTML = basicInfoHtml;
