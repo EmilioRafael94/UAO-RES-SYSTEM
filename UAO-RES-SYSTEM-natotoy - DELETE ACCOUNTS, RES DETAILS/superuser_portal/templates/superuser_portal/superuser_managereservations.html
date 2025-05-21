@@ -377,8 +377,12 @@ function updateBasicInfoSection(basicInfo) {
             </div>
             <div class="detail-row">
                 <div class="detail-item">
-                    <label>Date:</label>
-                    <span>${basicInfo.date}</span>
+                    <label>Date(s) of Actual Use:</label>
+                    <ul style="margin-bottom:0;">
+                        ${(Array.isArray(basicInfo.reserved_dates) && basicInfo.reserved_dates.length > 0)
+                            ? basicInfo.reserved_dates.map(date => `<li>${date}</li>`).join('')
+                            : `<li>${basicInfo.date}</li>`}
+                    </ul>
                 </div>
                 <div class="detail-item">
                     <label>Time:</label>

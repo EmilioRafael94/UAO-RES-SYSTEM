@@ -507,6 +507,12 @@ def get_reservation_details(request, reservation_id):
         reservation = get_object_or_404(Reservation, id=reservation_id)
 
         # Basic info section
+        # --- MULTI-DATE SUPPORT ---
+        if reservation.reserved_dates:
+            reserved_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
+        else:
+            reserved_dates_list = [reservation.date.strftime('%Y-%m-%d')]
+
         basic_info = {
             'id': reservation.id,
             'user': {
@@ -516,7 +522,10 @@ def get_reservation_details(request, reservation_id):
             'organization': reservation.organization,
             'representative': reservation.representative,
             'event_type': reservation.event_type,
-            'date': reservation.date.strftime('%Y-%m-%d'),
+            # --- Return all reserved dates as a list and as a display string ---
+            'reserved_dates': reserved_dates_list,
+            'reserved_dates_display': ', '.join(reserved_dates_list),
+            'date': reservation.date.strftime('%Y-%m-%d'),  # keep for backward compatibility
             'start_time': reservation.start_time.strftime('%H:%M'),
             'end_time': reservation.end_time.strftime('%H:%M'),
             'insider_count': reservation.insider_count,

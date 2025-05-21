@@ -18,7 +18,14 @@
                                 <p><strong>Organization:</strong> {{ reservation.organization }}</p>
                                 <p><strong>Representative:</strong> {{ reservation.representative }}</p>
                                 <p><strong>Date Reserved:</strong> {{ reservation.date_reserved|date:"M d, Y" }}</p>
-                                <p><strong>Date(s) of Actual Use:</strong> {{ reservation.display_dates }}</p>
+                                <p><strong>Date(s) of Actual Use:</strong></p>
+                                <ul class="mb-0">
+                                {% for date in reservation.display_dates_list %}
+                                    <li>{{ date }}</li>
+                                {% empty %}
+                                    <li>No dates selected</li>
+                                {% endfor %}
+                                </ul>
                                 <p><strong>Insider Count:</strong> {{ reservation.insider_count }}</p>
                                 <p><strong>Outsider Count:</strong> {{ reservation.outsider_count }}</p>
                                 <p><strong>Start Time:</strong> {{ reservation.start_time|time:"h:i A" }}</p>

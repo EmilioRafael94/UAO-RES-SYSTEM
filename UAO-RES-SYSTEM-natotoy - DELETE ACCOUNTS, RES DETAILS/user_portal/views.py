@@ -37,8 +37,11 @@ def user_myreservation(request):
         # Show the reserved dates if available, else show the single date
         if hasattr(reservation, 'reserved_dates') and reservation.reserved_dates:
             reservation.display_dates = reservation.reserved_dates
+            # Add a list version for template looping
+            reservation.display_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
         else:
             reservation.display_dates = reservation.date
+            reservation.display_dates_list = [str(reservation.date)]
     return render(request, 'user_portal/user_myreservation.html', {'reservations': reservations})
 
 
