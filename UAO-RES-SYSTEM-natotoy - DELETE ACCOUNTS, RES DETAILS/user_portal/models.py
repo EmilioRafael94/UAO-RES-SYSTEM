@@ -61,7 +61,7 @@ def make_reservation(request):
 
     return redirect('user_portal:user_makereservation')
 
-class OtherFacility(models.Model):
+##class OtherFacility(models.Model):
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name='other_facilities')
     facility_name = models.CharField(max_length=255)
     quantity = models.PositiveIntegerField(default=0)
@@ -69,7 +69,7 @@ class OtherFacility(models.Model):
     def __str__(self):
         return f"{self.facility_name} ({self.quantity})"
 
-class ManpowerNeeded(models.Model):
+##class ManpowerNeeded(models.Model):
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name='userportal_manpower_needed')
     manpower_type = models.CharField(max_length=255)
     quantity = models.PositiveIntegerField(default=0)
