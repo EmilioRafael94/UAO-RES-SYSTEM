@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f8f9fa; color: #222; }
+        .email-container { background: #fff; border-radius: 8px; padding: 32px; max-width: 500px; margin: 40px auto; box-shadow: 0 2px 8px #eee; }
+        .email-header { font-size: 1.3em; font-weight: bold; margin-bottom: 18px; color: #0d47a1; }
+        .email-body { font-size: 1.1em; margin-bottom: 18px; }
+        .email-footer { font-size: 0.95em; color: #888; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">{{ subject }}</div>
+        <div class="email-body">
+            {% block body %}{% endblock %}
+        </div>
+        <div class="email-footer">
+            This is an automated message from the Xavier University Athletics Office Reservation System.<br>
+            Please do not reply to this email.
+        </div>
+    </div>
+</body>
+</html>

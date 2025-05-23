@@ -1,0 +1,11 @@
+{% extends "login.html" %}
+{% block content %}
+<div class="alert alert-danger" style="margin-top: 2em;">
+    <h2>Something went wrong (500)</h2>
+    <p>Sorry, something went wrong on our end.<br>
+    Please try again later. If the problem persists, contact support or your administrator.</p>
+    <p>If you are a guest, please <a href="/accounts/register/">register here</a>.<br>
+    <strong>Note:</strong> Only students with an <code>@my.xu.edu.ph</code> email address are able to log in using Google on this site.</p>
+    <a href="/accounts/login/" class="btn btn-primary" style="margin-top:1em;">Back to Login</a>
+</div>
+{% endblock %}

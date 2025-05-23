@@ -1,0 +1,67 @@
+{% extends 'superuser_portal/base_superuser.html' %}
+
+{% block title %}System Settings{% endblock %}
+
+{% block content %}
+<div class="calendar-container">
+    <h1>Reservation Calendar</h1>
+    <div id="calendar"></div>
+    <div id="tooltip" class="tooltip"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<style>
+.calendar-container { max-width: 2000px; margin: 30px auto; }
+#calendar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; }
+.tooltip { display: none; position: absolute; z-index: 9999; background: #000000; color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 14px; pointer-events: none; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+    const tooltip = document.getElementById('tooltip');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        events: '/superuser_portal/get-reservations/',
+        eventColor: '#007BFF',
+        eventDisplay: 'block',
+        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
+        eventDidMount: function(info) {
+            // Tooltip content
+            let tooltipHtml = `<strong>${info.event.title}</strong><br>`;
+            if (info.event.extendedProps.event_type) {
+                tooltipHtml += `Type: ${info.event.extendedProps.event_type}<br>`;
+            }
+            if (info.event.extendedProps.facilities_needed) {
+                tooltipHtml += `Facilities: ${info.event.extendedProps.facilities_needed}<br>`;
+            }
+            if (info.event.extendedProps.manpower_needed) {
+                tooltipHtml += `Manpower: ${info.event.extendedProps.manpower_needed}<br>`;
+            }
+            if (info.event.extendedProps.status) {
+                tooltipHtml += `Status: ${info.event.extendedProps.status}`;
+            }
+            info.el.addEventListener('mouseenter', function(e) {
+                tooltip.innerHTML = tooltipHtml;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 10) + 'px';
+            });
+            info.el.addEventListener('mousemove', function(e) {
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 10) + 'px';
+            });
+            info.el.addEventListener('mouseleave', function() {
+                tooltip.style.display = 'none';
+            });
+        }
+    });
+    calendar.render();
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Upload Billing for Reservation #R-{{ reservation.id }}</h2>
+    {% if messages %}
+    <div class="alert alert-info mt-3">
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'superuser_portal:upload_billing' reservation.id %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="billing_file">Billing File (PDF):</label>
+            <input type="file" name="billing_file" id="billing_file" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount:</label>
+            <input type="text" name="amount" id="amount" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="due_date">Due Date:</label>
+            <input type="date" name="due_date" id="due_date" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload Billing</button>
+    </form>
+</div>
+{% endblock %}
