@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-&co%ozq83cke8ca0($=s^8-b6%qb9q3r2i2zk4^2j#h*dg_q!j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'emiliorubio94.pythonanywhere.com']
 
 
 # Application definition
@@ -158,6 +158,8 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'https://emiliorubio94.pythonanywhere.com/complete/google-oauth2/'
 
 SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',

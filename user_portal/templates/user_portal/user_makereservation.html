@@ -223,11 +223,28 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script>
+<script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var today = new Date().toISOString().split('T')[0];
+            if (window.flatpickr) {
+                flatpickr('#dates', {
+                    mode: 'multiple',
+                    dateFormat: 'Y-m-d',
+                    minDate: today // Prevent past dates
+                });
+            }
+        });
+
         // Multi-date picker using flatpickr (or fallback to simple JS if not available)
         document.addEventListener('DOMContentLoaded', function() {
+            var today = new Date().toISOString().split('T')[0];
             if (window.flatpickr) {
-                flatpickr('#dates', {mode: 'multiple', dateFormat: 'Y-m-d'});
+                flatpickr('#dates', {
+                    mode: 'multiple', 
+                    dateFormat: 'Y-m-d',
+                    minDate: today // Add this line to prevent past dates
+                });
             } else {
                 // fallback: let user type comma-separated dates
                 document.getElementById('dates').removeAttribute('readonly');
@@ -241,6 +258,22 @@
                 if (start === end) {
                     e.preventDefault();
                     alert('Start and end time cannot be the same.');
+                }
+                
+                // Additional validation for past dates
+                const datesInput = document.getElementById('dates').value;
+                if (datesInput) {
+                    const selectedDates = datesInput.split(',');
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    for (let date of selectedDates) {
+                        date = date.trim();
+                        if (date < today) {
+                            e.preventDefault();
+                            alert('Cannot select past dates. Please choose current or future dates only.');
+                            return;
+                        }
+                    }
                 }
             });
         });
