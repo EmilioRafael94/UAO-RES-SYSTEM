@@ -16,4 +16,5 @@ urlpatterns = [
     path('calendar/events/', views.get_user_calendar_events, name='get_user_calendar_events'),
     path('profile/update/', views.update_profile, name='update_profile'),
     path('reservations/get/', views.get_reservations, name='get_reservations'),
+    path('reservations/check-date/', views.check_date_availability, name='check_date_availability'),
 ]

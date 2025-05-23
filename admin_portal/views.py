@@ -6,6 +6,7 @@ from datetime import datetime
 from .models import Profile
 from reservations.models import Reservation
 from user_portal.models import Notification
+from reservations.email_utils import send_reservation_email
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -57,6 +58,13 @@ def approve_reservation(request, reservation_id):
         if len(reservation.admin_approvals) >= 4:
             reservation.status = 'Admin Approved'
             reservation.save()
+            # Send email: All admins approved
+            send_reservation_email(
+                reservation.user,
+                'Reservation Approved by Admins',
+                'reservation_approved_admins_email.html',
+                {'subject': 'Reservation Approved by Admins', 'user': reservation.user, 'reservation': reservation}
+            )
 
         # Create notification for the user about approval
         Notification.objects.create(
@@ -83,6 +91,14 @@ def reject_reservation(request, reservation_id):
 
         # Add admin rejection
         reservation.add_admin_rejection(admin_username, rejection_reason)
+
+        # Send email: Rejected
+        send_reservation_email(
+            reservation.user,
+            'Reservation Rejected',
+            'reservation_rejected_email.html',
+            {'subject': 'Reservation Rejected', 'user': reservation.user, 'reservation': reservation}
+        )
 
         # Create notification for the user about rejection
         Notification.objects.create(

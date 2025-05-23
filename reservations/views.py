@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from django.utils import timezone
 from .models import Reservation
 from .forms import ReservationForm
 
@@ -17,6 +18,7 @@ def make_reservation(request):
         if form.is_valid():
             reservation = form.save(commit=False)
             reservation.user = request.user
+            reservation.date_reserved = timezone.localdate()  # Set the reservation date to today
             reservation.save()
             messages.success(request, 'Reservation submitted successfully.')
             return redirect('user_dashboard')

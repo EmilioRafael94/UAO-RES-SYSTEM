@@ -3,6 +3,7 @@
 {% block title %}Superuser Profile{% endblock %}
 
 {% block content %}
+<<<<<<< HEAD
 <div class="profile-container">
     <div class="profile-card">
         <div class="profile-header">
@@ -38,10 +39,43 @@
                 <div class="info-icon"><i class="fas fa-envelope"></i></div>
                 <div class="info-content">
                     <label>Email:</label>
+=======
+<div class="profile-container professional-profile-bg">
+    <div class="profile-card professional-profile-card">
+        <div class="profile-header professional-profile-header">
+            <div class="profile-avatar-section professional-avatar-section">
+                <div class="avatar-container professional-avatar-container">
+                    <img src="/static/superuser_portal/profile_icon.png" alt="Profile Icon" class="profile-avatar professional-avatar">
+                </div>
+                <div class="profile-title">
+                    <h2 class="profile-username">{{ user.username }}</h2>
+                    <span class="profile-role professional-role-badge">Superuser</span>
+                </div>
+            </div>
+        </div>
+        <div class="profile-divider"></div>
+        <div class="profile-info-list professional-info-list">
+            <div class="info-item professional-info-item">
+                <div class="info-content">
+                    <label>First Name</label>
+                    <span>{{ user.first_name|default:'—' }}</span>
+                </div>
+            </div>
+            <div class="info-item professional-info-item">
+                <div class="info-content">
+                    <label>Last Name</label>
+                    <span>{{ user.last_name|default:'—' }}</span>
+                </div>
+            </div>
+            <div class="info-item professional-info-item">
+                <div class="info-content">
+                    <label>Email</label>
+>>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                     <span>{{ user.email }}</span>
                 </div>
             </div>
         </div>
+<<<<<<< HEAD
         
         <div class="profile-divider"></div>
         
@@ -58,6 +92,22 @@
                 <form action="{% url 'accounts:logout' %}" method="post" style="width:100%;">
                     {% csrf_token %}
                     <button type="submit" class="action-btn logout-btn">
+=======
+        <div class="profile-divider"></div>
+        <div class="profile-actions professional-actions">
+            <div class="action-row professional-action-row">
+                <button onclick="showEditProfileModal()" class="action-btn edit-btn professional-btn">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+                <button onclick="showChangePasswordModal()" class="action-btn change-password-btn professional-btn">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+            <div class="action-row logout-row professional-action-row">
+                <form action="{% url 'accounts:logout' %}" method="post" style="width:100%;">
+                    {% csrf_token %}
+                    <button type="submit" class="action-btn logout-btn professional-btn">
+>>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
                 </form>
@@ -151,6 +201,7 @@
 {% endblock %}
 
 <style>
+<<<<<<< HEAD
 :root {
     --primary-color: #3a7bd5;
     --primary-hover: #2a5fa8;
@@ -519,3 +570,150 @@ form {
     }
 }
 </style>
+=======
+/* Professional, clean, modern look for superuser profile */
+body {
+    background: #f6f8fa;
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    color: #222;
+}
+.profile-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f6f8fa;
+}
+.profile-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 32px 36px 28px 36px;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid #e3e7ed;
+}
+.profile-avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #e3e7ed;
+    margin-bottom: 18px;
+    background: #f4f6f8;
+}
+.profile-title {
+    text-align: center;
+    margin-bottom: 10px;
+}
+.profile-username {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 2px;
+}
+.profile-role {
+    display: inline-block;
+    background: #e3e7ed;
+    color: #3a7bd5;
+    font-size: 0.98rem;
+    font-weight: 600;
+    padding: 3px 14px;
+    border-radius: 16px;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+.profile-divider {
+    width: 100%;
+    height: 1px;
+    background: #e3e7ed;
+    margin: 18px 0 18px 0;
+}
+.profile-info-list {
+    width: 100%;
+    margin-bottom: 10px;
+}
+.info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.info-content label {
+    font-size: 0.97rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin-bottom: 1px;
+}
+.info-content span {
+    font-size: 1.13rem;
+    color: #222;
+    font-weight: 500;
+}
+.profile-actions {
+    width: 100%;
+    margin-top: 10px;
+}
+.action-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 0;
+    justify-content: flex-start;
+}
+.action-row.logout-row {
+    margin-top: 16px;
+    justify-content: flex-start;
+}
+.action-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #f4f6f8;
+    color: #1a237e;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.edit-btn {
+    background: #3a7bd5;
+    color: #fff;
+}
+.edit-btn:hover {
+    background: #2a5fa8;
+}
+.change-password-btn {
+    background: #2ecc71;
+    color: #fff;
+}
+.change-password-btn:hover {
+    background: #27ae60;
+}
+.logout-btn {
+    background: #e74c3c;
+    color: #fff;
+}
+.logout-btn:hover {
+    background: #c0392b;
+}
+@media (max-width: 600px) {
+    .profile-card {
+        padding: 18px 6vw 18px 6vw;
+        max-width: 98vw;
+    }
+    .profile-avatar {
+        width: 90px;
+        height: 90px;
+    }
+}
+</style>
+
+
+>>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d

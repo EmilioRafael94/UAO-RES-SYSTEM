@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-&co%ozq83cke8ca0($=s^8-b6%qb9q3r2i2zk4^2j#h*dg_q!j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -42,7 +43,8 @@ INSTALLED_APPS = [
     'user_portal',
     'admin_portal',
     'superuser_portal',
-    'reservations'
+    'reservations',
+    'social_django',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -60,7 +63,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'admin_portal' / 'templates'],  # Add this line
+        'DIRS': [BASE_DIR / 'admin_portal' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -68,6 +71,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -121,10 +126,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 # Default primary key field type
@@ -135,3 +140,53 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ayanokoji2122@gmail.com'
+EMAIL_HOST_PASSWORD = 'qoglzqqzqnjtuuao'
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+# Google OAuth2 keys (replace with your actual credentials)
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '663579820125-gg0547k393709luns7e4e0jdgfcq7mgm.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+]
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'accounts.social_auth_pipeline.restrict_email_domain',  # moved up before user creation
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+    'social_core.pipeline.user.create_user',
+    'accounts.social_auth_forbidden.forbidden_by_email',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'accounts.social_auth_pipeline.create_profile_if_not_exists',
+    'social_core.pipeline.user.user_details',
+)
+
+SOCIAL_AUTH_AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+)
+
+SOCIAL_AUTH_RAISE_EXCEPTIONS = False
+SOCIAL_AUTH_LOGIN_ERROR_URL = '/accounts/login/?error=forbidden'
+SOCIAL_AUTH_BACKEND_ERROR_URL = '/accounts/forbidden/'
+SOCIAL_AUTH_AUTHENTICATION_ERROR_URL = '/accounts/forbidden/'
+SOCIAL_AUTH_DISCONNECT_REDIRECT_URL = '/accounts/login/'
+SOCIAL_AUTH_FORBIDDEN_URL = '/accounts/forbidden/'
+
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/user/dashboard/'

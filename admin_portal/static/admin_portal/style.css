@@ -96,6 +96,7 @@ body {
 .dashboard-container {
     display: flex;
     height: 100vh;
+    overflow: hidden;
 }
 
 .sidebar {
@@ -103,6 +104,22 @@ body {
     color: white;
     padding: 20px;
     width: 250px;
+    height: 100vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #888 #e0e0e0;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 8px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #e0e0e0;
+    border-radius: 8px;
 }
 
 .logo {
@@ -149,6 +166,22 @@ body {
     flex: 1;
     padding: 30px;
     background-color: #f0f0f0;
+    height: 100vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #888 #e0e0e0;
+}
+
+.main-content::-webkit-scrollbar {
+    width: 12px;
+}
+.main-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 8px;
+}
+.main-content::-webkit-scrollbar-track {
+    background: #e0e0e0;
+    border-radius: 8px;
 }
 
 .top-bar {

@@ -38,6 +38,8 @@ class Reservation(models.Model):
     payment_receipt = models.FileField(upload_to='receipts/', blank=True, null=True)
     security_pass = models.FileField(upload_to='passes/', blank=True, null=True)
     security_pass_returned = models.FileField(upload_to='security_passes/', blank=True, null=True)
+    letter = models.FileField(upload_to='letters/', blank=True, null=True)
+    reserved_dates = models.CharField(max_length=512, blank=True, null=True, help_text='Comma-separated list of all reserved dates for multi-date reservations')
     security_pass_status = models.CharField(max_length=20, choices=[('Pending', 'Pending'), ('Confirmed', 'Confirmed'), ('Rejected', 'Rejected')], default='Pending')
     security_pass_rejection_reason = models.TextField(blank=True, null=True)
 
@@ -162,3 +164,16 @@ class Reservation(models.Model):
             }
             for admin, data in approvals.items()
         ]
+
+    def check_date_availability(self, date, facility):
+        """Check if a date is available for reservation"""
+        existing_reservations = Reservation.objects.filter(
+            facility=facility,
+            date=date,
+            status__in=['Approved', 'Admin Approved', 'Payment Approved', 'Security Pass Issued', 'Completed']
+        )
+        return not existing_reservations.exists()
+
+    def is_date_blocked(self, date, facility):
+        """Check if date is blocked for a specific facility"""
+        return not self.check_date_availability(date, facility)

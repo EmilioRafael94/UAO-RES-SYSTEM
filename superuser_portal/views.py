@@ -15,6 +15,7 @@ from user_portal.models import Notification
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
+from reservations.email_utils import send_reservation_email
 
 def is_superuser(user):
     return user.is_superuser
@@ -51,6 +52,7 @@ def superuser_dashboard(request):
 @user_passes_test(is_superuser)
 def manage_reservations(request):
     filter_type = request.GET.get('filter', 'all')
+    sort_order = request.GET.get('sort', 'desc')  # 'asc' or 'desc'
 
     # Filter reservations based on the selected filter type
     if filter_type == 'needs_billing':
@@ -82,24 +84,29 @@ def manage_reservations(request):
         reservations = Reservation.objects.filter(status='Completed')
 
     else:  # 'all' or unknown filter
-        reservations = Reservation.objects.all()
+        if sort_order == 'asc':
+            reservations = Reservation.objects.all().order_by('id')
+        else:
+            reservations = Reservation.objects.all().order_by('-id')
 
     # Process reservations for display
     reservations_data = []
     for res in reservations:
-        # Determine the display status based on the current state
+        # Determine the display status and admin approval count
         if res.status == 'Rejected':
-            status = 'Rejected'
+            status = 'Rejected by admin(s)'
+        elif res.status == 'Pending' or (len(res.admin_approvals or {}) < 4):
+            status = 'Waiting for admin approval'
+        elif len(res.admin_approvals or {}) >= 4 and res.status == 'Admin Approved':
+            status = 'Approved by 4 admins. Billing and security pass process ready.'
         elif res.status == 'Completed':
             status = 'Completed'
-        elif res.status == 'Admin Approved':
-            status = 'Needs Billing'
         elif res.status == 'Billing Uploaded':
-            status = 'Needs Payment Verification'
+            status = 'Billing Uploaded'
         elif res.status == 'Payment Approved':
-            status = 'Needs Security Pass'
+            status = 'Payment Approved'
         elif res.status == 'Security Pass Issued':
-            status = 'Waiting for Returned Pass'
+            status = 'Security Pass Issued'
         else:
             status = res.status
 
@@ -116,11 +123,13 @@ def manage_reservations(request):
             'admin_approvals': res.admin_approvals,
             'admin_rejections': res.admin_rejections,
             'security_pass_status': res.security_pass_status,
+            'admin_approval_count': len(res.admin_approvals or {}),
         })
 
     context = {
         'reservations': reservations_data,
-        'current_filter': filter_type
+        'current_filter': filter_type,
+        'current_sort': sort_order,
     }
     return render(request, 'superuser_portal/superuser_managereservations.html', context)
 
@@ -148,7 +157,7 @@ def verify_payment(request, reservation_id):
             reservation.payment_verified_date = timezone.now()
             reservation.payment_rejection_reason = ''  # Clear any previous rejection reason
             reservation.save()
-
+            # Do NOT send security pass email here
             return JsonResponse({
                 'success': True,
                 'message': 'Payment verified successfully'
@@ -236,7 +245,7 @@ def delete_facility(request, facility_id):
     if request.method == 'POST':
         facility = get_object_or_404(Facility, id=facility_id)
         facility.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Facility deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -284,7 +293,7 @@ def delete_time_template(request, template_id):
     if request.method == 'POST':
         template = get_object_or_404(TimeSlotTemplate, id=template_id)
         template.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Time template deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -321,7 +330,7 @@ def delete_blocked_date(request, date_id):
     if request.method == 'POST':
         blocked_date = get_object_or_404(BlockedDate, id=date_id)
         blocked_date.delete()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': 'Blocked date deleted successfully.'})
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
@@ -363,8 +372,6 @@ def reset_user_password(request, user_id):
         user.set_password(new_password)
         user.save()
         
-        # TODO: Send email with new password
-        # For now, we'll return the password in the response
         return JsonResponse({
             'success': True,
             'message': 'Password has been reset',
@@ -406,10 +413,6 @@ def dashboard(request):
 def upload_billing(request, reservation_id):
     reservation = get_object_or_404(Reservation, id=reservation_id)
     if request.method == 'POST':
-        print(f"Received POST request for reservation ID: {reservation_id}")
-        print(f"Billing file: {request.FILES.get('billing_file')}")
-        print(f"Amount: {request.POST.get('amount')}, Due Date: {request.POST.get('due_date')}")
-
         billing_file = request.FILES.get('billing_file')
         amount = request.POST.get('amount')
         due_date = request.POST.get('due_date')
@@ -420,9 +423,11 @@ def upload_billing(request, reservation_id):
             reservation.due_date = due_date
             reservation.status = 'Billing Issued'  # Ensure status is updated correctly
             reservation.save()
-            messages.success(request, 'Billing uploaded successfully.')
+            if request.user.is_authenticated:
+                messages.success(request, 'Billing uploaded successfully.')
         else:
-            messages.error(request, 'All fields are required to upload billing.')
+            if request.user.is_authenticated:
+                messages.error(request, 'All fields are required to upload billing.')
 
         return redirect('superuser_portal:superuser_dashboard')
 
@@ -482,6 +487,14 @@ def upload_billing_statement(request, reservation_id):
             notification_type='billing_uploaded'
         )
         
+        # Send email: Billing Form Available
+        send_reservation_email(
+            reservation.user,
+            'Billing Form Available',
+            'billing_form_available_email.html',
+            {'subject': 'Billing Form Available', 'user': reservation.user, 'reservation': reservation}
+        )
+        
         return JsonResponse({'success': True, 'file_url': reservation.billing_statement.url})
     return JsonResponse({'success': False, 'error': 'Invalid request.'})
 
@@ -498,31 +511,83 @@ def get_reservation_details(request, reservation_id):
     try:
         reservation = get_object_or_404(Reservation, id=reservation_id)
 
-        # Prepare billing data
+        # Basic info section
+        # --- MULTI-DATE SUPPORT ---
+        if reservation.reserved_dates:
+            reserved_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
+        else:
+            reserved_dates_list = [reservation.date.strftime('%Y-%m-%d')]
+
+        basic_info = {
+            'id': reservation.id,
+            'user': {
+                'username': reservation.user.username,
+                'email': reservation.user.email
+            },
+            'organization': reservation.organization,
+            'representative': reservation.representative,
+            'event_type': reservation.event_type,
+            # --- Return all reserved dates as a list and as a display string ---
+            'reserved_dates': reserved_dates_list,
+            'reserved_dates_display': ', '.join(reserved_dates_list),
+            'date': reservation.date.strftime('%Y-%m-%d'),  # keep for backward compatibility
+            'start_time': reservation.start_time.strftime('%H:%M'),
+            'end_time': reservation.end_time.strftime('%H:%M'),
+            'insider_count': reservation.insider_count,
+            'outsider_count': reservation.outsider_count,
+            'facility_use': reservation.facility_use,
+            # --- Add letter file if present ---
+            'letter_url': reservation.letter.url if reservation.letter else None,
+        }
+
+        # Resource requirements section
+        resources = {
+            'facilities_needed': reservation.facilities_needed or {},
+            'manpower_needed': reservation.manpower_needed or {},
+        }
+
+        # Admin actions section
+        admin_info = {
+            'admin_approvals': reservation.admin_approvals or {},
+            'admin_rejections': reservation.admin_rejections or {},
+            'approval_count': len(reservation.admin_approvals or {}),
+            'status': reservation.status,
+        }
+
+        # Prepare billing data 
         billing_data = {
             'statement_url': reservation.billing_statement.url if reservation.billing_statement else None,
         }
 
         # Prepare payment data
         payment_data = {
-            'id': reservation_id,  # Using reservation ID for payment operations
+            'id': reservation_id,
             'receipt_url': reservation.payment_receipt.url if reservation.payment_receipt else None,
             'verified': reservation.payment_verified,
             'rejected': True if reservation.status == 'Payment Rejected' else False,
-            'rejection_reason': reservation.payment_rejection_reason if hasattr(reservation, 'payment_rejection_reason') else None
+            'rejection_reason': reservation.payment_rejection_reason if hasattr(reservation, 'payment_rejection_reason') else None,
+            'status': reservation.status,  # <-- Add this line
         }
 
-        # Prepare security pass data (placeholder for now)
+        # Prepare security pass data
         pass_data = {
             'id': reservation_id,
-            'file_url': None,  # Update when you implement security pass
+            'file_url': reservation.security_pass.url if reservation.security_pass else None,
+            'returned_url': reservation.security_pass_returned.url if reservation.security_pass_returned else None,
+            'can_upload': reservation.status in ['Payment Approved', 'Needs Security Pass', 'Security Pass Needed'] and not reservation.security_pass,
+            'status': reservation.security_pass_status,
+            'rejection_reason': reservation.security_pass_rejection_reason or '',
         }
 
         return JsonResponse({
+            'basic_info': basic_info,
+            'resources': resources,
+            'admin_info': admin_info,
             'billing': billing_data,
             'payment': payment_data,
             'pass': pass_data,
-            'status': reservation.status
+            'status': reservation.status,
+            'admin_approval_count': len(reservation.admin_approvals or {}),
         })
 
     except Exception as e:
@@ -537,6 +602,13 @@ def upload_security_pass(request, reservation_id):
         reservation.status = 'Security Pass Issued'
         reservation.security_pass_status = 'Pending'
         reservation.save()
+        # Send email: Security Pass Released (moved here from payment verification)
+        send_reservation_email(
+            reservation.user,
+            'Security Pass Form Released',
+            'security_pass_released_email.html',
+            {'subject': 'Security Pass Form Released', 'user': reservation.user, 'reservation': reservation}
+        )
         return JsonResponse({'success': True, 'file_url': reservation.security_pass.url})
     elif request.method == 'POST':
         return JsonResponse({'success': False, 'error': 'No file uploaded.'})
@@ -558,6 +630,14 @@ def confirm_security_pass(request, reservation_id):
             notification_type='reservation_completed'
         )
         
+        # Send email: Reservation Confirmed
+        send_reservation_email(
+            reservation.user,
+            'Reservation Confirmed',
+            'reservation_confirmed_email.html',
+            {'subject': 'Reservation Confirmed', 'user': reservation.user, 'reservation': reservation}
+        )
+        
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request.'})
 
@@ -574,4 +654,45 @@ def reject_security_pass(request, reservation_id):
         reservation.save()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request.'})
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_user(request, user_id):
+    if request.method == 'POST':
+        user = get_object_or_404(User, id=user_id)
+        if not user.is_superuser:  # Prevent deletion of superusers
+            user.delete()
+            return JsonResponse({'success': True, 'message': 'User deleted successfully'})
+        return JsonResponse({'error': 'Cannot delete superuser'}, status=400)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+from django.views.decorators.http import require_GET
+
+@require_GET
+def get_reservations(request):
+    from reservations.models import Reservation
+    events = []
+    for r in Reservation.objects.all():
+        facilities_list = []
+        if hasattr(r, 'facilities_needed') and isinstance(r.facilities_needed, dict):
+            for facility, quantity in r.facilities_needed.items():
+                facilities_list.append(f"{facility}: {quantity}")
+        else:
+            facilities_list.append('None')
+        manpower_list = []
+        if hasattr(r, 'manpower_needed') and isinstance(r.manpower_needed, dict):
+            for manpower, quantity in r.manpower_needed.items():
+                manpower_list.append(f"{manpower}: {quantity}")
+        else:
+            manpower_list.append('None')
+        events.append({
+            'title': getattr(r, 'facility_use', r.facility) if hasattr(r, 'facility_use') else r.facility,
+            'start': f"{r.date}T{getattr(r, 'start_time', '00:00:00')}",
+            'end': f"{r.date}T{getattr(r, 'end_time', '00:00:00')}",
+            'event_type': getattr(r, 'event_type', ''),
+            'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
+            'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
+            'status': r.status,
+        })
+    return JsonResponse(events, safe=False)
 

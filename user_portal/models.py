@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.urls import reverse
 from django.shortcuts import redirect
+from reservations.models import Reservation  # Use the unified Reservation model
 
 class Profile(models.Model):
     ROLE_CHOICES = [
@@ -19,13 +20,13 @@ class Profile(models.Model):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='Student of XU')
     id_type = models.CharField(max_length=50, blank=True, null=True)
     id_upload = models.FileField(upload_to='id_uploads/', blank=True, null=True)
+    # Email verification fields
+    is_verified = models.BooleanField(default=False)
+    verification_code = models.CharField(max_length=6, blank=True, null=True)
 
     def __str__(self):
         return self.user.username
-   
 
- 
-    
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
@@ -60,39 +61,6 @@ def make_reservation(request):
 
     return redirect('user_portal:user_makereservation')
 
-class Reservation(models.Model):
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Approved', 'Approved'),
-        ('Rejected', 'Rejected'),
-        ('Completed', 'Completed'),
-    ]
-
-    # Organization Information
-    organization = models.CharField(max_length=255)
-    representative = models.CharField(max_length=255)
-    contact_number = models.CharField(max_length=20)
-
-    # Reservation Information
-    date_reserved = models.DateField()
-    insider_count = models.PositiveIntegerField(default=0)
-    outsider_count = models.PositiveIntegerField(default=0)
-    date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-
-    # Facility
-    facility = models.CharField(max_length=255)
-    event_type = models.CharField(max_length=255)
-
-    # Meta Information
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.organization} - {self.facility} - {self.date}"
-
 class OtherFacility(models.Model):
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name='other_facilities')
     facility_name = models.CharField(max_length=255)
@@ -102,7 +70,7 @@ class OtherFacility(models.Model):
         return f"{self.facility_name} ({self.quantity})"
 
 class ManpowerNeeded(models.Model):
-    reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name='manpower_needed')
+    reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name='userportal_manpower_needed')
     manpower_type = models.CharField(max_length=255)
     quantity = models.PositiveIntegerField(default=0)
 

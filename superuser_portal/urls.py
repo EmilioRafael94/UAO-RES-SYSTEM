@@ -29,6 +29,7 @@ urlpatterns = [
     path('user/<int:user_id>/change-role/', views.change_user_role, name='change_user_role'),
     path('user/<int:user_id>/reset-password/', views.reset_user_password, name='reset_user_password'),
     path('user/<int:user_id>/update-status/', views.update_user_status, name='update_user_status'),
+    path('user/<int:user_id>/delete/', views.delete_user, name='delete_user'),
     path('reservation/<int:reservation_id>/details/', views.reservation_details, name='reservation_details'),
     path('upload-billing/<int:reservation_id>/', views.upload_billing, name='upload_billing'),
     path('upload_billing/<int:reservation_id>/', views.upload_billing_statement, name='upload_billing'),
@@ -36,4 +37,6 @@ urlpatterns = [
     path('reservation/<int:reservation_id>/upload-security-pass/', views.upload_security_pass, name='upload_security_pass'),
     path('reservation/<int:reservation_id>/confirm-security-pass/', views.confirm_security_pass, name='confirm_security_pass'),
     path('reservation/<int:reservation_id>/reject-security-pass/', views.reject_security_pass, name='reject_security_pass'),
+    path('get_reservation_details/<int:reservation_id>/', views.get_reservation_details, name='get_reservation_details'),
+    path('get-reservations/', views.get_reservations, name='get_reservations'),
 ]

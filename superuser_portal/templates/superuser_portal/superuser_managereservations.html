@@ -2,6 +2,77 @@
 
 {% block title %}Manage Reservations{% endblock %}
 
+{% block styles %}
+{{ block.super }}
+<style>
+    .reservations-container {
+        padding: 1rem;
+    }
+    .filter-section {
+        margin-bottom: 1rem;
+    }
+    .filter-dropdown {
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+    /* Rest of your styles will be moved to this block */
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        margin: 50px auto;
+        padding: 20px;
+        width: 90%;
+        max-width: 1000px;
+        border-radius: 10px;
+        position: relative;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .modal-title {
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .close {
+        float: right;
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #000;
+        text-shadow: 0 1px 0 #fff;
+        opacity: .5;
+        padding: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .close:hover {
+        opacity: .75;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <div class="reservations-container">
         <!-- Filter Dropdown -->
@@ -15,6 +86,12 @@
                 <option value="rejected" {% if current_filter == 'rejected' %}selected{% endif %}>Rejected</option>
                 <option value="today" {% if current_filter == 'today' %}selected{% endif %}>Today</option>
             </select>
+            {% if current_filter == 'all' %}
+            <select id="sortSelect" class="filter-dropdown" onchange="applySort(this.value)">
+                <option value="desc" {% if current_sort == 'desc' %}selected{% endif %}>Newest to Oldest</option>
+                <option value="asc" {% if current_sort == 'asc' %}selected{% endif %}>Oldest to Newest</option>
+            </select>
+            {% endif %}
         </div>
 
         <!-- Reservations Table -->
@@ -29,7 +106,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="reservationsBody">
                     {% for reservation in reservations %}
                     <tr class="reservation-row" data-id="{{ reservation.id }}">
                         <td>{{ reservation.reference }}</td>
@@ -48,7 +125,7 @@
                             </span>
                         </td>
                         <td>
-                            <button onclick="viewReservationDetails({{ reservation.id }})" class="btn btn-primary btn-sm">View Details</button>
+                            <button onclick="viewReservationDetails('{{ reservation.id }}')" class="btn btn-primary btn-sm">View Details</button>
                         </td>
                     </tr>
                     {% empty %}
@@ -63,16 +140,40 @@
 {% endblock %}
 
 {% block modal %}
-    <!-- Reservation Details Modal -->
-    <div id="reservationModal" class="modal">
+<div class="modal fade" id="reservationModal" tabindex="-1" aria-labelledby="reservationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <span class="close">&times;</span>
             <div class="modal-header">
-                <h2>Reservation Details</h2>
+                <h5 class="modal-title" id="reservationModalLabel">Reservation Details</h5>
+                <button type="button" class="close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Hidden field to store current reservation ID -->
                 <input type="hidden" id="current-reservation-id" value="">
+
+                <!-- Basic Information Section -->
+                <div class="info-section">
+                    <h3>Basic Information</h3>
+                    <div id="basicInfo" class="detail-grid">
+                        Loading...
+                    </div>
+                </div>
+
+                <!-- Resource Requirements Section -->
+                <div class="info-section">
+                    <h3>Resource Requirements</h3>
+                    <div id="resourceInfo">
+                        Loading...
+                    </div>
+                </div>
+
+                <!-- Admin Information Section -->
+                <div class="info-section">
+                    <h3>Admin Information</h3>
+                    <div id="adminInfo">
+                        Loading...
+                    </div>
+                </div>
 
                 <div class="steps-container">
                     <!-- Billing Section -->
@@ -102,26 +203,28 @@
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Security Pass Reject Modal -->
-    <div id="rejectPassModal" class="modal" style="display:none;">
-        <div class="modal-content" style="max-width:400px;">
-            <span class="close" onclick="closeRejectPassModal()">&times;</span>
-            <h3>Reject Security Pass</h3>
-            <form id="rejectPassForm">
-                <input type="hidden" id="reject-pass-reservation-id">
-                <div class="form-group">
-                    <label for="reject-pass-reason">Reason for rejection:</label>
-                    <textarea id="reject-pass-reason" class="form-control" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-danger">Reject</button>
-                <button type="button" class="btn btn-secondary" onclick="closeRejectPassModal()">Cancel</button>
-            </form>
-        </div>
+<!-- Security Pass Reject Modal -->
+<div id="rejectPassModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:400px;">
+        <span class="close" onclick="closeRejectPassModal()">&times;</span>
+        <h3>Reject Security Pass</h3>
+        <form id="rejectPassForm">
+            <input type="hidden" id="reject-pass-reservation-id">
+            <div class="form-group">
+                <label for="reject-pass-reason">Reason for rejection:</label>
+                <textarea id="reject-pass-reason" class="form-control" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger">Reject</button>
+            <button type="button" class="btn btn-secondary" onclick="closeRejectPassModal()">Cancel</button>
+        </form>
     </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+{{ block.super }}
 <script>
 // --- Ensure these functions are globally available ---
 function updateReservationRowStatus(reservationId, newStatus) {
@@ -193,6 +296,15 @@ function applyFilter(filterValue) {
     window.location.href = currentUrl.toString();
 }
 
+// Sort functionality
+function applySort(sortValue) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('sort', sortValue);
+    // Always keep filter as 'all' when sorting
+    currentUrl.searchParams.set('filter', 'all');
+    window.location.href = currentUrl.toString();
+}
+
 // Search functionality
 function searchReservations() {
     const searchText = document.getElementById('searchInput').value.toLowerCase();
@@ -210,71 +322,266 @@ const closeBtn = document.querySelector('.modal-content .close');
 
 function viewReservationDetails(reservationId) {
     modal.style.display = 'block';
-    
-    // Load reservation details via Ajax
-    fetch(`/superuser_portal/reservation/${reservationId}/details/`)
+    // Show loading while fetching
+    document.getElementById('basicInfo').innerHTML = 'Loading...';
+    document.getElementById('resourceInfo').innerHTML = 'Loading...';
+    document.getElementById('adminInfo').innerHTML = 'Loading...';
+    document.getElementById('billingDetails').innerHTML = 'Loading...';
+    document.getElementById('paymentDetails').innerHTML = 'Loading...';
+    document.getElementById('passDetails').innerHTML = 'Loading...';
+
+    fetch(`/superuser_portal/get_reservation_details/${reservationId}/`)
         .then(response => response.json())
         .then(data => {
+            if (data.error) {
+                const errorHtml = `<div class='alert alert-danger'>${data.error}</div>`;
+                document.getElementById('basicInfo').innerHTML = errorHtml;
+                document.getElementById('resourceInfo').innerHTML = errorHtml;
+                document.getElementById('adminInfo').innerHTML = errorHtml;
+                document.getElementById('billingDetails').innerHTML = errorHtml;
+                document.getElementById('paymentDetails').innerHTML = errorHtml;
+                document.getElementById('passDetails').innerHTML = errorHtml;
+                return;
+            }
+            window.currentReservationStatus = data.status;
+            window.currentAdminApprovalCount = data.admin_approval_count || 0;
+            
+            // Update all sections
+            updateBasicInfoSection(data.basic_info);
+            updateResourceSection(data.resources);
+            updateAdminInfoSection(data.admin_info);
             updateBillingSection(data.billing);
             updatePaymentSection(data.payment);
             updatePassSection(data.pass);
-            document.getElementById('current-reservation-id').value = reservationId; // Set reservation ID
+            document.getElementById('current-reservation-id').value = reservationId;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const errorHtml = `<div class='alert alert-danger'>Error loading details.</div>`;
+            document.getElementById('basicInfo').innerHTML = errorHtml;
+            document.getElementById('resourceInfo').innerHTML = errorHtml;
+            document.getElementById('adminInfo').innerHTML = errorHtml;
+            document.getElementById('billingDetails').innerHTML = errorHtml;
+            document.getElementById('paymentDetails').innerHTML = errorHtml;
+            document.getElementById('passDetails').innerHTML = errorHtml;
         });
 }
 
+function updateBasicInfoSection(basicInfo) {
+    const basicInfoHtml = `
+        <div class="detail-grid">
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Requester:</label>
+                    <span>${basicInfo.user.username} (${basicInfo.user.email})</span>
+                </div>
+                <div class="detail-item">
+                    <label>Organization:</label>
+                    <span>${basicInfo.organization}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Representative:</label>
+                    <span>${basicInfo.representative}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Event Type:</label>
+                    <span>${basicInfo.event_type}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Date(s) of Actual Use:</label>
+                    <ul style="margin-bottom:0;">
+                        ${(Array.isArray(basicInfo.reserved_dates) && basicInfo.reserved_dates.length > 0)
+                            ? basicInfo.reserved_dates.map(date => `<li>${date}</li>`).join('')
+                            : `<li>${basicInfo.date}</li>`}
+                    </ul>
+                </div>
+                <div class="detail-item">
+                    <label>Time:</label>
+                    <span>${basicInfo.start_time} - ${basicInfo.end_time}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Facility:</label>
+                    <span>${basicInfo.facility_use}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Insider Count:</label>
+                    <span>${basicInfo.insider_count}</span>
+                </div>
+                <div class="detail-item">
+                    <label>Outsider Count:</label>
+                    <span>${basicInfo.outsider_count}</span>
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-item">
+                    <label>Request Letter:</label>
+                    ${basicInfo.letter_url ? `<a href="${basicInfo.letter_url}" target="_blank">View Letter</a>` : '<span>No letter uploaded</span>'}
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('basicInfo').innerHTML = basicInfoHtml;
+}
+
+function updateResourceSection(resources) {
+    const resourcesHtml = `
+        <div class="detail-grid">
+            <div class="resources-column">
+                <h4>Facilities Needed</h4>
+                <ul>
+                    ${Object.entries(resources.facilities_needed || {})
+                        .filter(([_, quantity]) => quantity > 0)
+                        .map(([facility, quantity]) => `<li>${facility}: ${quantity}</li>`)
+                        .join('')}
+                </ul>
+            </div>
+            <div class="resources-column">
+                <h4>Manpower Needed</h4>
+                <ul>
+                    ${Object.entries(resources.manpower_needed || {})
+                        .filter(([_, quantity]) => quantity > 0)
+                        .map(([role, quantity]) => `<li>${role}: ${quantity}</li>`)
+                        .join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    document.getElementById('resourceInfo').innerHTML = resourcesHtml;
+}
+
+function updateAdminInfoSection(adminInfo) {
+    const approvalsHtml = `
+        <div class="admin-actions-column">
+            <h4>Admin Approvals</h4>
+            ${Object.keys(adminInfo.admin_approvals || {}).length > 0 ? `
+                <ul>
+                    ${Object.entries(adminInfo.admin_approvals).map(([admin, details]) => `
+                        <li>
+                            <strong>${admin}</strong>
+                            <div class="timestamp">${new Date(details.timestamp).toLocaleString()}</div>
+                            ${details.notes ? `<div class="notes">${details.notes}</div>` : ''}
+                        </li>
+                    `).join('')}
+                </ul>
+            ` : '<p>No approvals yet</p>'}
+        </div>
+    `;
+
+    const rejectionsHtml = `
+        <div class="admin-actions-column">
+            <h4>Admin Rejections</h4>
+            ${Object.keys(adminInfo.admin_rejections || {}).length > 0 ? `
+                <ul>
+                    ${Object.entries(adminInfo.admin_rejections).map(([admin, details]) => `
+                        <li class="rejection">
+                            <strong>${admin}</strong>
+                            <div class="timestamp">${new Date(details.timestamp).toLocaleString()}</div>
+                            ${details.reason ? `<div class="reason">${details.reason}</div>` : ''}
+                        </li>
+                    `).join('')}
+                </ul>
+            ` : '<p>No rejections</p>'}
+        </div>
+    `;
+
+    const statusHtml = `
+        <div class="status-summary">
+            <strong>Current Status:</strong> ${adminInfo.status}
+            <br>
+            <strong>Admin Approvals:</strong> ${adminInfo.approval_count}/4
+        </div>
+    `;
+
+    document.getElementById('adminInfo').innerHTML = `
+        <div class="admin-actions-grid">
+            ${approvalsHtml}
+            ${rejectionsHtml}
+        </div>
+        ${statusHtml}
+    `;
+}
+
 function updateBillingSection(billing) {
-    const billingHtml = billing.statement_url ? 
-        `<div class="file-section">
-            <a href="${billing.statement_url}" class="file-link" target="_blank">
-                View Billing Statement
-            </a>
-        </div>` :
-        `<div class="upload-section">
-            <form onsubmit="uploadBilling(event)">
-                <input type="file" required>
-                <button type="submit">Upload Billing Statement</button>
-            </form>
-        </div>`;
-    
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
+
+    let billingHtml = '';
+    if (reservationStatus === 'Rejected') {
+        billingHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        billingHtml = `<div class="pending-section">Waiting for admin approval</div>`;
+    } else {
+        // Show upload or view billing statement
+        if (billing.statement_url) {
+            billingHtml = `<div class="file-section">
+                <a href="${billing.statement_url}" class="file-link" target="_blank">
+                    View Billing Statement
+                </a>
+            </div>`;
+        } else {
+            billingHtml = `<div class="upload-section">
+                <form onsubmit="uploadBilling(event)">
+                    <input type="file" required>
+                    <button type="submit">Upload Billing Statement</button>
+                </form>
+            </div>`;
+        }
+    }
     document.getElementById('billingDetails').innerHTML = billingHtml;
 }
 
 function updatePaymentSection(payment) {
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
     let paymentHtml = '';
-
-    if (payment.receipt_url) {
-        // Payment receipt has been uploaded by user
-        paymentHtml = `
-            <div class="receipt-section">
-                <div class="receipt-preview">
-                    <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
-                        View Payment Receipt
-                    </a>
-                </div>
-                <div class="verification-actions mt-3">
-                    <button type="button" class="btn btn-success" id="verifyPaymentBtn">
-                        <i class="fas fa-check-circle"></i> Verify Payment
-                    </button>
-                    <button type="button" class="btn btn-danger" id="rejectPaymentBtn">
-                        <i class="fas fa-times-circle"></i> Reject
-                    </button>
-                </div>
-            </div>`;
+    // DEBUG: Log values to help diagnose why label isn't updating
+    console.log('PAYMENT DEBUG:', {
+        status: payment.status,
+        rejection_reason: payment.rejection_reason,
+        receipt_url: payment.receipt_url
+    });
+    // Mirror security pass logic: show reupload if status is 'Payment Pending' and there is a previous rejection reason
+    const isReupload = payment.status === 'Payment Pending' && payment.rejection_reason && payment.receipt_url;
+    if (reservationStatus === 'Rejected') {
+        paymentHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        paymentHtml = `<div class="pending-section">Waiting for admin approval</div>`;
     } else {
-        // No payment receipt uploaded yet
-        paymentHtml = `
-            <div class="waiting-message">
-                Waiting for payment receipt...
-            </div>`;
+        if (payment.receipt_url) {
+            paymentHtml = `
+                <div class="receipt-section">
+                    <div class="receipt-preview">
+                        <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
+                            ${isReupload ? 'View Reuploaded Payment Receipt' : 'View Payment Receipt'}
+                        </a>
+                    </div>
+                    <div class="verification-actions mt-3">
+                        <button type="button" class="btn btn-success" id="verifyPaymentBtn">
+                            <i class="fas fa-check-circle"></i> Verify Payment
+                        </button>
+                        <button type="button" class="btn btn-danger" id="rejectPaymentBtn">
+                            <i class="fas fa-times-circle"></i> Reject
+                        </button>
+                    </div>
+                </div>`;
+        } else if (payment.status === 'Payment Rejected') {
+            paymentHtml = `<div class="alert alert-warning">User must re-upload a valid payment receipt.</div>`;
+        } else {
+            paymentHtml = `<div class="pending-section">Waiting for payment receipt...</div>`;
+        }
+        if (payment.status === 'Payment Rejected' && payment.rejection_reason) {
+            paymentHtml += `<div class="alert alert-danger mt-2"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
+        }
     }
-
-    if (payment.status === 'Payment Rejected' && payment.rejection_reason) {
-        paymentHtml += `<div class="alert alert-danger mt-2"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
-    }
-
     document.getElementById('paymentDetails').innerHTML = paymentHtml;
-
-    // Attach event listeners after rendering
     const verifyBtn = document.getElementById('verifyPaymentBtn');
     if (verifyBtn) {
         verifyBtn.onclick = function() { verifyPayment(payment.id); };
@@ -286,38 +593,56 @@ function updatePaymentSection(payment) {
 }
 
 function updatePassSection(pass) {
+    const reservationStatus = window.currentReservationStatus;
+    const adminApprovalCount = window.currentAdminApprovalCount;
     let passHtml = '';
-    // Show upload form if superuser needs to upload a blank security pass
-    if ((pass.can_upload || pass.status === 'Needs Security Pass' || pass.status === 'Payment Approved') && !pass.file_url) {
-        passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
-            <input type="file" name="security_pass" required>
-            <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
-        </form>`;
-    } else if (pass.file_url) {
-        // Show the uploaded security pass file
-        passHtml = `<div class="file-section">
-            <a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass</a>`;
-        if (pass.returned_url) {
-            passHtml += `<div class='mt-2'><a href="${pass.returned_url}" class="file-link" target="_blank">View Returned Pass</a></div>`;
-            passHtml += `<div class='mt-2'>
-                <button onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
-                <button onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
-            </div>`;
-        } else {
-            passHtml += `<div class='mt-2'><em>Waiting for user to return filled pass...</em></div>`;
-        }
-        passHtml += `<div class='mt-2'><strong>Status:</strong> ${pass.status || 'Pending'}</div>`;
-        if (pass.status === 'Rejected' && pass.rejection_reason) {
-            passHtml += `<div class='alert alert-danger mt-2'><strong>Reason:</strong> ${pass.rejection_reason}</div>`;
-        }
-        passHtml += `</div>`;
+    // DEBUG: Log values to help diagnose why label isn't updating
+    console.log('PASS DEBUG:', {
+        status: pass.status,
+        rejection_reason: pass.rejection_reason,
+        returned_url: pass.returned_url,
+        isReupload: pass.rejection_reason && pass.returned_url && (pass.status === 'Pending' || pass.status === 'Security Pass Issued')
+    });
+    // Detect re-upload: if there was a previous rejection and the user has uploaded a new file
+    const isReupload = pass.rejection_reason && pass.returned_url && (pass.status === 'Pending' || pass.status === 'Security Pass Issued');
+    if (reservationStatus === 'Rejected') {
+        passHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
+    } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
+        passHtml = `<div class="pending-section">Waiting for admin approval</div>`;
     } else {
-        // If payment is approved but no security pass uploaded, show upload form
-        if (pass.status === 'Payment Approved' && !pass.file_url) {
+        if ((pass.can_upload || pass.status === 'Needs Security Pass' || pass.status === 'Payment Approved') && !pass.file_url) {
             passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
                 <input type="file" name="security_pass" required>
                 <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
             </form>`;
+        } else if (pass.returned_url) {
+            passHtml = `<div class="file-section">`;
+            passHtml += `<a href="${pass.returned_url}" class="file-link" target="_blank">${isReupload ? 'View Reuploaded Security Pass' : 'View Uploaded Security Pass'}</a>`;
+            if (pass.file_url) {
+                passHtml += `<div class='mt-2'><a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass (Superuser Upload)</a></div>`;
+            }
+            // Only show Confirm/Reject if user has uploaded their returned security pass
+            passHtml += `<div class='mt-2'>
+                    <button onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
+                    <button onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
+                </div>`;
+            passHtml += `<div class='mt-2'><strong>Status:</strong> ${pass.status || 'Pending'}</div>`;
+            if (pass.status === 'Rejected' && pass.rejection_reason) {
+                passHtml += `<div class='alert alert-danger mt-2'><strong>Reason:</strong> ${pass.rejection_reason}</div>`;
+            }
+            passHtml += `</div>`;
+        } else if (pass.file_url) {
+            // Show superuser upload link and waiting message if user hasn't returned the pass yet
+            passHtml = `<div class="file-section">`;
+            passHtml += `<a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass (Superuser Upload)</a>`;
+            passHtml += `<div class="pending-section mt-2">Waiting for security pass...</div>`;
+            passHtml += `</div>`;
+        } else if (pass.status === 'Rejected') {
+            passHtml = `<div class="alert alert-warning">User must re-upload a valid security pass file.</div>`;
+        } else if (pass.status === 'Payment Approved' && !pass.file_url) {
+            passHtml = `<form id="uploadPassForm" enctype="multipart/form-data" onsubmit="uploadSecurityPass(event)">
+                <input type="file" name="security_pass" required>
+                <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>`;
         } else {
             passHtml = `<div class="pending-section">Waiting for security pass...</div>`;
         }
@@ -580,6 +905,144 @@ function uploadBilling(event) {
     .btn-sm {
         padding: 4px 8px;
         font-size: 12px;
+    }
+
+    /* Info Section Styles */
+    .info-section {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .info-section h3 {
+        margin-bottom: 1rem;
+        color: #1a237e;
+        border-bottom: 2px solid #e3f2fd;
+        padding-bottom: 0.5rem;
+    }
+
+    .detail-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .detail-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .detail-item label {
+        font-weight: 600;
+        color: #546e7a;
+        font-size: 0.9rem;
+    }
+
+    .detail-item span {
+        color: #37474f;
+    }
+
+    .resources-column {
+        flex: 1;
+    }
+
+    .resources-column h4 {
+        color: #1a237e;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .resources-column ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .resources-column li {
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #e3f2fd;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .admin-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .admin-actions-column {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 6px;
+    }
+
+    .admin-actions-column h4 {
+        color: #1a237e;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+
+    .admin-actions-column ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .admin-actions-column li {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        border-left: 4px solid #4caf50;
+    }
+
+    .admin-actions-column li.rejection {
+        border-left-color: #f44336;
+    }
+
+    .admin-actions-column .timestamp {
+        font-size: 0.8rem;
+        color: #78909c;
+        margin: 0.25rem 0;
+    }
+
+    .admin-actions-column .notes,
+    .admin-actions-column .reason {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .status-summary {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #e3f2fd;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .badge-reupload {
+        background-color: #ffc107;
+        color: #000;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-block;
+        margin-left: 8px;
     }
 </style>
 

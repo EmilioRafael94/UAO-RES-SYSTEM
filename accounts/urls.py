@@ -14,4 +14,6 @@ urlpatterns = [
     path('role_redirect/', views.role_redirect_view, name='role_redirect'),
     path('home/', views.home_redirect, name='home'),
     path('logout/', CustomLogoutView.as_view(next_page='accounts:login'), name='logout'),
+    path('forbidden/', views.forbidden, name='forbidden'),
+    path('google-auth-forbidden/', views.google_auth_forbidden, name='google_auth_forbidden'),
 ]
