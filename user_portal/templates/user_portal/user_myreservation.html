@@ -128,6 +128,8 @@
                                                     Approved
                                                 {% elif reservation.status == 'Payment Rejected' %}
                                                     Rejected
+                                                {% elif reservation.status == 'Completed' %}
+                                                    Verified
                                                 {% elif reservation.payment_receipt %}
                                                     Pending
                                                 {% else %}
