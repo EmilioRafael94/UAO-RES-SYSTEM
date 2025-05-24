@@ -1,0 +1,258 @@
+{% extends 'superuser_portal/base_superuser.html' %}
+
+{% block title %}System Settings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">System Settings & Reservation Calendar</h2>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Block Date Modal -->
+<div class="modal fade" id="blockDateModal" tabindex="-1" aria-labelledby="blockDateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="blockDateModalLabel">Block a Date</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="blockDateForm">
+            <div class="mb-3">
+                <label for="facility" class="form-label">Facility</label>
+                <select class="form-select" id="facility" name="facility" required>
+                    <option value="">Select a facility</option>
+                    {% for facility in facilities %}
+                    <option value="{{ facility.id }}">{{ facility.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date" required>
+            </div>
+            <div class="mb-3">
+                <label for="start_time" class="form-label">Start Time</label>
+                <input type="time" class="form-control" id="start_time" name="start_time" required>
+            </div>
+            <div class="mb-3">
+                <label for="end_time" class="form-label">End Time</label>
+                <input type="time" class="form-control" id="end_time" name="end_time" required>
+            </div>
+            <div class="mb-3">
+                <label for="reason" class="form-label">Reason</label>
+                <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Block Date</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Blocked Date Details Modal -->
+<div class="modal fade" id="blockedDateModal" tabindex="-1" aria-labelledby="blockedDateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="blockedDateModalLabel">Blocked Date Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div><strong>Facility:</strong> <span id="blockedFacility"></span></div>
+        <div><strong>Date:</strong> <span id="blockedDate"></span></div>
+        <div><strong>Time:</strong> <span id="blockedTime"></span></div>
+        <div><strong>Reason:</strong> <span id="blockedReason"></span></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" id="deleteBlockedDateBtn">Delete</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="errorModalLabel">Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var calendarEl = document.getElementById('calendar');
+    var blockDateModal = new bootstrap.Modal(document.getElementById('blockDateModal'));
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        selectable: true,
+        selectMirror: true,
+        dayMaxEvents: true,
+        select: function(info) {
+            document.getElementById('date').value = info.startStr;
+            document.getElementById('facility').value = '';
+            document.getElementById('start_time').value = '';
+            document.getElementById('end_time').value = '';
+            document.getElementById('reason').value = '';
+            blockDateModal.show();
+        },
+        eventClick: function(info) {
+            if (info.event.title.includes('(Blocked)')) {
+                // Fill modal with event details
+                document.getElementById('blockedFacility').textContent = info.event.title.replace(' (Blocked)', '');
+                // Use event's start date/time
+                var startDate = info.event.start;
+                var endDate = info.event.end || info.event.start; // fallback if no end
+                document.getElementById('blockedDate').textContent = startDate.toLocaleDateString();
+                document.getElementById('blockedTime').textContent = startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' - ' + endDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('blockedReason').textContent = info.event.extendedProps.reason || '';
+                // Store blocked date id for deletion
+                document.getElementById('deleteBlockedDateBtn').setAttribute('data-blocked-id', info.event.extendedProps.id);
+                var blockedDateModal = new bootstrap.Modal(document.getElementById('blockedDateModal'));
+                blockedDateModal.show();
+            } else {
+                alert(`Reservation: ${info.event.title}`);
+            }
+        },
+        events: function(info, successCallback, failureCallback) {
+            fetch(`/superuser_portal/blocked-dates/get/?start=${info.startStr}&end=${info.endStr}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const events = data.blocked_dates.map(blocked => ({
+                            title: `${blocked.facility__name} (Blocked)` ,
+                            start: `${blocked.date}T${blocked.start_time}`,
+                            end: `${blocked.date}T${blocked.end_time}`,
+                            color: '#dc3545',
+                            extendedProps: {
+                                reason: blocked.reason,
+                                id: blocked.id
+                            }
+                        }));
+                        successCallback(events);
+                    }
+                })
+                .catch(error => failureCallback(error));
+        }
+    });
+    calendar.render();
+
+    // Handle form submission
+    document.getElementById('blockDateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = {
+            facility_id: document.getElementById('facility').value,
+            date: document.getElementById('date').value,
+            start_time: document.getElementById('start_time').value,
+            end_time: document.getElementById('end_time').value,
+            reason: document.getElementById('reason').value
+        };
+        fetch('/superuser_portal/blocked-dates/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                calendar.refetchEvents();
+                blockDateModal.hide();
+                alert('Blocked date added!');
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while blocking the date');
+        });
+    });
+
+    // Add this after the calendar.render() call
+    document.getElementById('deleteBlockedDateBtn').addEventListener('click', function() {
+        var blockedId = this.getAttribute('data-blocked-id');
+        fetch(`/superuser_portal/blocked-dates/delete/${blockedId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                var blockedDateModal = bootstrap.Modal.getInstance(document.getElementById('blockedDateModal'));
+                blockedDateModal.hide();
+                calendar.refetchEvents();
+                alert('Blocked date deleted!');
+            } else {
+                showErrorModal(data.error || 'An error occurred while deleting the blocked date.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorModal('An error occurred while deleting the blocked date.');
+        });
+    });
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+// Add this JS function after the DOMContentLoaded handler
+function showErrorModal(message) {
+    var errorModalBody = document.getElementById('errorModalBody');
+    errorModalBody.textContent = message;
+    var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+}
+</script>
+{% endblock %}
+
