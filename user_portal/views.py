@@ -143,6 +143,17 @@ def user_makereservation(request):
         if not all(required_fields):
             messages.error(request, 'Please fill in all required fields.')
             return redirect('user_portal:user_makereservation')
+        # Overlap check for each date
+        for date in date_list:
+            overlap = Reservation.objects.filter(
+                facility__in=facilities,
+                date=date,
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            ).exclude(status__in=['Rejected', 'Cancelled']).exists()
+            if overlap:
+                messages.error(request, 'The selected facility, date, or time is already reserved. Please look at the calendar.')
+                return redirect('user_portal:user_makereservation')
         # Save a reservation for each selected date
         try:
             reserved_dates_str = ', '.join(date_list)
