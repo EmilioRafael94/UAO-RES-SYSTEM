@@ -3,392 +3,256 @@
 {% block title %}System Settings{% endblock %}
 
 {% block content %}
-<<<<<<< HEAD
-    <div class="settings-container">
-        <!-- Facility Management -->
-        <div class="settings-section">
-            <h2>Facility Management</h2>
-            <div class="facility-list">
-                {% for facility in facilities %}
-                <div class="facility-item">
-                    <div class="facility-info">
-                        <h3 class="facility-name">{{ facility.name }}</h3>
-                        <div class="facility-details">
-                            <span class="facility-capacity"><i class="fas fa-users"></i> Capacity: {{ facility.capacity }}</span>
-                            {% if facility.description %}
-                            <p class="facility-description">{{ facility.description }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="facility-actions">
-                        <button onclick="editFacility('{{ facility.id }}')" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
-                        <button onclick="deleteFacility('{{ facility.id }}')" class="delete-btn"><i class="fas fa-trash"></i> Delete</button>
-                    </div>
+<div class="container-fluid">
+    <h2 class="mb-4">System Settings & Reservation Calendar</h2>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div id="calendar"></div>
                 </div>
-                {% empty %}
-                <div class="empty-state">
-                    <p>No facilities added yet</p>
-                </div>
-                {% endfor %}
             </div>
-            <button onclick="showAddFacilityModal()" class="add-btn"><i class="fas fa-plus"></i> Add New Facility</button>
-        </div>
-
-        <!-- Time Slot Templates -->
-        <div class="settings-section">
-            <h2>Time Slot Templates</h2>
-            <div class="time-slots-grid">
-                {% for template in time_templates %}
-                <div class="time-slot-template">
-                    <div class="template-header">
-                        <h3>{{ template.name }}</h3>
-                        <div class="template-actions">
-                            <button onclick="editTemplate('{{ template.id }}')" class="edit-btn"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteTemplate('{{ template.id }}')" class="delete-btn"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="slot-times">
-                        {% for slot in template.slots.all %}
-                        <div class="slot">
-                            <i class="far fa-clock"></i>
-                            <span>{{ slot.start_time|time:"g:i A" }} - {{ slot.end_time|time:"g:i A" }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% empty %}
-                <div class="empty-state">
-                    <p>No time slot templates added yet</p>
-                </div>
-                {% endfor %}
-            </div>
-            <button onclick="showAddTemplateModal()" class="add-btn"><i class="fas fa-plus"></i> Add New Template</button>
-        </div>
-
-        <!-- Blocked Dates -->
-        <div class="settings-section">
-            <h2>Blocked Dates</h2>
-            <div class="blocked-dates-list">
-                {% for blocked_date in blocked_dates %}
-                <div class="blocked-date-item">
-                    <div class="blocked-date-info">
-                        <h4>{{ blocked_date.facility.name }}</h4>
-                        <div class="date-range">
-                            <i class="far fa-calendar-alt"></i>
-                            <span>{{ blocked_date.start_date|date:"M d, Y" }} - {{ blocked_date.end_date|date:"M d, Y" }}</span>
-                        </div>
-                        {% if blocked_date.reason %}
-                        <p class="blocked-reason">{{ blocked_date.reason }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="blocked-date-actions">
-                        <button onclick="deleteBlockedDate('{{ blocked_date.id }}')" class="delete-btn"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="empty-state">
-                    <p>No dates are currently blocked</p>
-                </div>
-                {% endfor %}
-            </div>
-            <button onclick="showBlockDateModal()" class="add-btn"><i class="fas fa-plus"></i> Block New Date</button>
         </div>
     </div>
-{% endblock %}
+</div>
 
-{% block modal %}
-    <!-- Add Facility Modal -->
-    <div id="facilityModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add/Edit Facility</h2>
-            <form id="facilityForm" method="POST" action="{% url 'superuser_portal:manage_facility' %}">
-                {% csrf_token %}
-                <input type="hidden" id="facilityId" name="facility_id">
-                <div class="form-group">
-                    <label for="facilityName">Facility Name:</label>
-                    <input type="text" id="facilityName" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="facilityCapacity">Capacity:</label>
-                    <input type="number" id="facilityCapacity" name="capacity" required>
-                </div>
-                <div class="form-group">
-                    <label for="facilityDescription">Description:</label>
-                    <textarea id="facilityDescription" name="description"></textarea>
-                </div>
-                <button type="submit" class="save-btn">Save</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Add Time Template Modal -->
-    <div id="templateModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add/Edit Time Template</h2>
-            <form id="templateForm" method="POST" action="{% url 'superuser_portal:add_time_template' %}">
-                {% csrf_token %}
-                <input type="hidden" id="templateId" name="template_id">
-                <div class="form-group">
-                    <label for="templateName">Template Name:</label>
-                    <input type="text" id="templateName" name="name" required>
-                </div>
-                <div id="timeSlots">
-                    <div class="time-slot-input">
-                        <input type="time" name="start_time[]" required>
-                        <input type="time" name="end_time[]" required>
-                        <button type="button" class="remove-slot">Remove</button>
-                    </div>
-                </div>
-                <button type="button" onclick="addTimeSlot()" class="add-slot-btn">Add Time Slot</button>
-                <button type="submit" class="save-btn">Save Template</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Block Date Modal -->
-    <div id="blockDateModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Block Date</h2>
-            <form id="blockDateForm" method="POST" action="{% url 'superuser_portal:manage_blocked_dates' %}">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="facility">Select Facility:</label>
-                    <select id="facility" name="facility" required>
-                        {% for facility in facilities %}
-                            <option value="{{ facility.id }}">{{ facility.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="blockStartDate">Start Date:</label>
-                    <input type="date" id="blockStartDate" name="start_date" required>
-                </div>
-                <div class="form-group">
-                    <label for="blockEndDate">End Date:</label>
-                    <input type="date" id="blockEndDate" name="end_date" required>
-                </div>
-                <div class="form-group">
-                    <label for="blockReason">Reason:</label>
-                    <textarea id="blockReason" name="reason" required></textarea>
-                </div>
-                <button type="submit" class="save-btn">Block Dates</button>
-            </form>
-        </div>
-    </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Modal Management
-    function showModal(modalId) {
-        document.getElementById(modalId).style.display = 'block';
-    }
-
-    function hideModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    // Facility Management
-    function showAddFacilityModal() {
-        // Reset the form action to the add URL
-        const form = document.getElementById('facilityForm');
-        form.action = "{% url 'superuser_portal:manage_facility' %}";
-        document.getElementById('facilityId').value = '';
-        document.getElementById('facilityName').value = '';
-        document.getElementById('facilityCapacity').value = '';
-        document.getElementById('facilityDescription').value = '';
-        showModal('facilityModal');
-    }
-
-    function editFacility(id) {
-        document.getElementById('facilityId').value = id;
-        const form = document.getElementById('facilityForm');
-        form.action = `/superuser_portal/facility/${id}/`;
-        // Load facility data and show modal
-        fetch(`/superuser_portal/facility/${id}/`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('facilityName').value = data.name;
-                document.getElementById('facilityCapacity').value = data.capacity;
-                document.getElementById('facilityDescription').value = data.description || '';
-                showModal('facilityModal');
-            });
-    }
-
-    function deleteFacility(id) {
-        if (confirm('Are you sure you want to delete this facility?')) {
-            fetch('/superuser_portal/facility/' + id + '/delete/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                }
-            }).then(() => window.location.reload());
-        }
-    }
-
-    // Time Template Management
-    function showAddTemplateModal() {
-        const form = document.getElementById('templateForm');
-        form.action = "{% url 'superuser_portal:add_time_template' %}";
-        document.getElementById('templateId').value = '';
-        document.getElementById('templateName').value = '';
-        const timeSlots = document.getElementById('timeSlots');
-        timeSlots.innerHTML = `
-            <div class="time-slot-input">
-                <input type="time" name="start_time[]" required>
-                <input type="time" name="end_time[]" required>
-                <button type="button" class="remove-slot" onclick="this.parentElement.remove()">Remove</button>
+<!-- Block Date Modal -->
+<div class="modal fade" id="blockDateModal" tabindex="-1" aria-labelledby="blockDateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="blockDateModalLabel">Block a Date</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="blockDateForm">
+            <div class="mb-3">
+                <label for="facility" class="form-label">Facility</label>
+                <select class="form-select" id="facility" name="facility" required>
+                    <option value="">Select a facility</option>
+                    {% for facility in facilities %}
+                    <option value="{{ facility.id }}">{{ facility.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
-        `;
-        showModal('templateModal');
-    }
+            <div class="mb-3">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date" required>
+            </div>
+            <div class="mb-3">
+                <label for="start_time" class="form-label">Start Time</label>
+                <input type="time" class="form-control" id="start_time" name="start_time" required>
+            </div>
+            <div class="mb-3">
+                <label for="end_time" class="form-label">End Time</label>
+                <input type="time" class="form-control" id="end_time" name="end_time" required>
+            </div>
+            <div class="mb-3">
+                <label for="reason" class="form-label">Reason</label>
+                <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Block Date</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function editTemplate(id) {
-        document.getElementById('templateId').value = id;
-        const form = document.getElementById('templateForm');
-        form.action = "{% url 'superuser_portal:edit_time_template' template_id=0 %}".replace('0', id);
-        // Load template data and show modal
-        fetch('/superuser_portal/time-template/' + id + '/edit/')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('templateName').value = data.name;
-                const timeSlots = document.getElementById('timeSlots');
-                timeSlots.innerHTML = '';
-                data.slots.forEach(slot => {
-                    const slotDiv = document.createElement('div');
-                    slotDiv.className = 'time-slot-input';
-                    slotDiv.innerHTML = `
-                        <input type="time" name="start_time[]" value="${slot.start}" required>
-                        <input type="time" name="end_time[]" value="${slot.end}" required>
-                        <button type="button" class="remove-slot" onclick="this.parentElement.remove()">Remove</button>
-                    `;
-                    timeSlots.appendChild(slotDiv);
-                });
-                showModal('templateModal');
-            });
-    }
+<!-- Blocked Date Details Modal -->
+<div class="modal fade" id="blockedDateModal" tabindex="-1" aria-labelledby="blockedDateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="blockedDateModalLabel">Blocked Date Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div><strong>Facility:</strong> <span id="blockedFacility"></span></div>
+        <div><strong>Date:</strong> <span id="blockedDate"></span></div>
+        <div><strong>Time:</strong> <span id="blockedTime"></span></div>
+        <div><strong>Reason:</strong> <span id="blockedReason"></span></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" id="deleteBlockedDateBtn">Delete</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function deleteTemplate(id) {
-        if (confirm('Are you sure you want to delete this template?')) {
-            fetch('/superuser_portal/time-template/' + id + '/delete/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                }
-            }).then(() => window.location.reload());
-        }
-    }
-
-    function addTimeSlot() {
-        const timeSlots = document.getElementById('timeSlots');
-        const newSlot = document.createElement('div');
-        newSlot.className = 'time-slot-input';
-        newSlot.innerHTML = `
-            <input type="time" name="start_time[]" required>
-            <input type="time" name="end_time[]" required>
-            <button type="button" class="remove-slot" onclick="this.parentElement.remove()">Remove</button>
-        `;
-        timeSlots.appendChild(newSlot);
-    }
-
-    // Block Date Management
-    function showBlockDateModal() {
-        showModal('blockDateModal');
-    }
-
-    function deleteBlockedDate(id) {
-        if (confirm('Are you sure you want to delete this blocked date?')) {
-            fetch('/superuser_portal/blocked-dates/' + id + '/delete/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                }
-            }).then(() => window.location.reload());
-        }
-    }
-
-    // Close buttons
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.onclick = function() {
-            this.closest('.modal').style.display = 'none';
-        }
-    });
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    }
-
-    // Keep Settings
-    function keepSettings() {
-        alert('Settings have been kept successfully!');
-    }
-=======
-<div class="calendar-container">
-    <h1>Reservation Calendar</h1>
-    <div id="calendar"></div>
-    <div id="tooltip" class="tooltip"></div>
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="errorModalLabel">Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-<style>
-.calendar-container { max-width: 2000px; margin: 30px auto; }
-#calendar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; }
-.tooltip { display: none; position: absolute; z-index: 9999; background: #000000; color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 14px; pointer-events: none; }
-</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const calendarEl = document.getElementById('calendar');
-    const tooltip = document.getElementById('tooltip');
-    const calendar = new FullCalendar.Calendar(calendarEl, {
+    var calendarEl = document.getElementById('calendar');
+    var blockDateModal = new bootstrap.Modal(document.getElementById('blockDateModal'));
+    var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
-        height: 'auto',
-        events: '/superuser_portal/get-reservations/',
-        eventColor: '#007BFF',
-        eventDisplay: 'block',
-        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: true },
-        eventDidMount: function(info) {
-            // Tooltip content
-            let tooltipHtml = `<strong>${info.event.title}</strong><br>`;
-            if (info.event.extendedProps.event_type) {
-                tooltipHtml += `Type: ${info.event.extendedProps.event_type}<br>`;
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        selectable: true,
+        selectMirror: true,
+        dayMaxEvents: true,
+        select: function(info) {
+            document.getElementById('date').value = info.startStr;
+            document.getElementById('facility').value = '';
+            document.getElementById('start_time').value = '';
+            document.getElementById('end_time').value = '';
+            document.getElementById('reason').value = '';
+            blockDateModal.show();
+        },
+        eventClick: function(info) {
+            if (info.event.title.includes('(Blocked)')) {
+                // Fill modal with event details
+                document.getElementById('blockedFacility').textContent = info.event.title.replace(' (Blocked)', '');
+                // Use event's start date/time
+                var startDate = info.event.start;
+                var endDate = info.event.end || info.event.start; // fallback if no end
+                document.getElementById('blockedDate').textContent = startDate.toLocaleDateString();
+                document.getElementById('blockedTime').textContent = startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ' - ' + endDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('blockedReason').textContent = info.event.extendedProps.reason || '';
+                // Store blocked date id for deletion
+                document.getElementById('deleteBlockedDateBtn').setAttribute('data-blocked-id', info.event.extendedProps.id);
+                var blockedDateModal = new bootstrap.Modal(document.getElementById('blockedDateModal'));
+                blockedDateModal.show();
+            } else {
+                alert(`Reservation: ${info.event.title}`);
             }
-            if (info.event.extendedProps.facilities_needed) {
-                tooltipHtml += `Facilities: ${info.event.extendedProps.facilities_needed}<br>`;
-            }
-            if (info.event.extendedProps.manpower_needed) {
-                tooltipHtml += `Manpower: ${info.event.extendedProps.manpower_needed}<br>`;
-            }
-            if (info.event.extendedProps.status) {
-                tooltipHtml += `Status: ${info.event.extendedProps.status}`;
-            }
-            info.el.addEventListener('mouseenter', function(e) {
-                tooltip.innerHTML = tooltipHtml;
-                tooltip.style.display = 'block';
-                tooltip.style.left = (e.pageX + 10) + 'px';
-                tooltip.style.top = (e.pageY + 10) + 'px';
-            });
-            info.el.addEventListener('mousemove', function(e) {
-                tooltip.style.left = (e.pageX + 10) + 'px';
-                tooltip.style.top = (e.pageY + 10) + 'px';
-            });
-            info.el.addEventListener('mouseleave', function() {
-                tooltip.style.display = 'none';
-            });
+        },
+        events: function(info, successCallback, failureCallback) {
+            fetch(`/superuser_portal/blocked-dates/get/?start=${info.startStr}&end=${info.endStr}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const events = data.blocked_dates.map(blocked => ({
+                            title: `${blocked.facility__name} (Blocked)` ,
+                            start: `${blocked.date}T${blocked.start_time}`,
+                            end: `${blocked.date}T${blocked.end_time}`,
+                            color: '#dc3545',
+                            extendedProps: {
+                                reason: blocked.reason,
+                                id: blocked.id
+                            }
+                        }));
+                        successCallback(events);
+                    }
+                })
+                .catch(error => failureCallback(error));
         }
     });
     calendar.render();
+
+    // Handle form submission
+    document.getElementById('blockDateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = {
+            facility_id: document.getElementById('facility').value,
+            date: document.getElementById('date').value,
+            start_time: document.getElementById('start_time').value,
+            end_time: document.getElementById('end_time').value,
+            reason: document.getElementById('reason').value
+        };
+        fetch('/superuser_portal/blocked-dates/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                calendar.refetchEvents();
+                blockDateModal.hide();
+                alert('Blocked date added!');
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while blocking the date');
+        });
+    });
+
+    // Add this after the calendar.render() call
+    document.getElementById('deleteBlockedDateBtn').addEventListener('click', function() {
+        var blockedId = this.getAttribute('data-blocked-id');
+        fetch(`/superuser_portal/blocked-dates/delete/${blockedId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                var blockedDateModal = bootstrap.Modal.getInstance(document.getElementById('blockedDateModal'));
+                blockedDateModal.hide();
+                calendar.refetchEvents();
+                alert('Blocked date deleted!');
+            } else {
+                showErrorModal(data.error || 'An error occurred while deleting the blocked date.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorModal('An error occurred while deleting the blocked date.');
+        });
+    });
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
+// Add this JS function after the DOMContentLoaded handler
+function showErrorModal(message) {
+    var errorModalBody = document.getElementById('errorModalBody');
+    errorModalBody.textContent = message;
+    var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+}
 </script>
 {% endblock %}
 

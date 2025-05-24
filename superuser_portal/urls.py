@@ -24,6 +24,8 @@ urlpatterns = [
     # Blocked dates management
     path('blocked-dates/', views.manage_blocked_dates, name='manage_blocked_dates'),
     path('blocked-dates/<int:date_id>/delete/', views.delete_blocked_date, name='delete_blocked_date'),
+    path('blocked-dates/delete/<int:date_id>/', views.delete_blocked_date, name='delete_blocked_date'),
+    path('blocked-dates/get/', views.get_blocked_dates, name='get_blocked_dates'),
     
     # User management
     path('user/<int:user_id>/change-role/', views.change_user_role, name='change_user_role'),

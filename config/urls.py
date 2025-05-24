@@ -26,7 +26,7 @@ urlpatterns = [
     path('admin_portal/', include('admin_portal.urls')),
     path('superuser_portal/', include('superuser_portal.urls')),
     path('', home_redirect, name='home'),  # Default redirect after login
-    path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('accounts/', include('accounts.urls', namespace='accounts')),  
     path('oauth/', include('social_django.urls', namespace='social')),  # Add this line
 ]
 

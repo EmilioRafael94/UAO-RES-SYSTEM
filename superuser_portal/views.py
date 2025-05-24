@@ -300,29 +300,65 @@ def delete_time_template(request, template_id):
 @user_passes_test(is_superuser)
 def manage_blocked_dates(request):
     if request.method == 'POST':
-        facility_id = request.POST.get('facility')
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        reason = request.POST.get('reason')
-        
-        BlockedDate.objects.create(
-            facility_id=facility_id,
-            start_date=start_date,
-            end_date=end_date,
-            reason=reason,
-            created_by=request.user
-        )
-        
-        return redirect('superuser_portal:system_settings')
+        try:
+            data = json.loads(request.body)
+            facility_id = data.get('facility_id')
+            date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+            start_time = datetime.strptime(data.get('start_time'), '%H:%M').time()
+            end_time = datetime.strptime(data.get('end_time'), '%H:%M').time()
+            reason = data.get('reason')
+
+            facility = get_object_or_404(Facility, id=facility_id)
+            
+            # Check for overlapping blocked dates
+            existing_block = BlockedDate.objects.filter(
+                facility=facility,
+                date=date,
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            ).exists()
+            
+            if existing_block:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'This time slot overlaps with an existing blocked period'
+                }, status=400)
+
+            blocked_date = BlockedDate.objects.create(
+                facility=facility,
+                date=date,
+                start_time=start_time,
+                end_time=end_time,
+                reason=reason,
+                created_by=request.user
+            )
+
+            return JsonResponse({
+                'success': True,
+                'blocked_date': {
+                    'id': blocked_date.id,
+                    'facility': facility.name,
+                    'date': date.strftime('%Y-%m-%d'),
+                    'start_time': start_time.strftime('%H:%M'),
+                    'end_time': end_time.strftime('%H:%M'),
+                    'reason': reason
+                }
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+    facilities = Facility.objects.all()
+    blocked_dates = BlockedDate.objects.all().order_by('date', 'start_time')
     
-    blocked_dates = BlockedDate.objects.all().select_related('facility')
-    return JsonResponse({
-        'blocked_dates': [{'facility': bd.facility.name,
-                          'start': bd.start_date.isoformat(),
-                          'end': bd.end_date.isoformat(),
-                          'reason': bd.reason}
-                         for bd in blocked_dates]
-    })
+    context = {
+        'facilities': facilities,
+        'blocked_dates': blocked_dates
+    }
+    return render(request, 'superuser_portal/manage_blocked_dates.html', context)
 
 @login_required
 @user_passes_test(is_superuser)
@@ -330,8 +366,29 @@ def delete_blocked_date(request, date_id):
     if request.method == 'POST':
         blocked_date = get_object_or_404(BlockedDate, id=date_id)
         blocked_date.delete()
-        return JsonResponse({'status': 'success', 'message': 'Blocked date deleted successfully.'})
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+@login_required
+@user_passes_test(is_superuser)
+def get_blocked_dates(request):
+    facility_id = request.GET.get('facility_id')
+    date = request.GET.get('date')
+    
+    query = {}
+    if facility_id:
+        query['facility_id'] = facility_id
+    if date:
+        query['date'] = date
+        
+    blocked_dates = BlockedDate.objects.filter(**query).values(
+        'id', 'facility__name', 'date', 'start_time', 'end_time', 'reason'
+    )
+    
+    return JsonResponse({
+        'success': True,
+        'blocked_dates': list(blocked_dates)
+    })
 
 @login_required
 @user_passes_test(is_superuser)

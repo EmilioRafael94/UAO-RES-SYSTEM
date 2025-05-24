@@ -7,6 +7,7 @@ from .models import Profile
 from reservations.models import Reservation
 from user_portal.models import Notification
 from reservations.email_utils import send_reservation_email
+from superuser_portal.models import BlockedDate
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
@@ -30,7 +31,7 @@ def admin_dashboard(request):
     # Get selected reservation if ID is provided
     selected_reservation = None
     reservation_id = request.GET.get('id')
-    if reservation_id:
+    if reservation_id and reservation_id.isdigit():
         selected_reservation = get_object_or_404(Reservation, id=reservation_id)
 
     context = {
@@ -141,6 +142,18 @@ def get_approved_reservations(request):
                 'status': res.status,
             }
         })
+
+    # Add blocked dates
+    for bd in BlockedDate.objects.all():
+        events.append({
+            'title': f"{bd.facility.name} (Blocked)",
+            'start': f"{bd.date}T{bd.start_time}",
+            'end': f"{bd.date}T{bd.end_time}",
+            'color': '#dc3545',
+            'event_type': 'Blocked',
+            'reason': bd.reason
+        })
+
     return JsonResponse(events, safe=False)
 
 # Admin Profile View

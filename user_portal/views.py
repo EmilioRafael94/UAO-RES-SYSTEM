@@ -13,6 +13,8 @@ import os
 from django.core.mail import send_mail
 import random
 from django.core.cache import cache
+from superuser_portal.models import BlockedDate, Facility
+from django.db.models import Q
 
 
 SAMPLE_RESERVATIONS = [
@@ -32,16 +34,40 @@ SAMPLE_RESERVATIONS = [
 
 @login_required
 def user_myreservation(request):
-    reservations = Reservation.objects.filter(user=request.user)
+    sort = request.GET.get('sort', 'newest')
+    if sort == 'oldest':
+        reservations = Reservation.objects.filter(user=request.user).order_by('id')
+    else:
+        reservations = Reservation.objects.filter(user=request.user).order_by('-id')
     for reservation in reservations:
         # Show the reserved dates if available, else show the single date
         if hasattr(reservation, 'reserved_dates') and reservation.reserved_dates:
             reservation.display_dates = reservation.reserved_dates
-            # Add a list version for template looping
             reservation.display_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
         else:
             reservation.display_dates = reservation.date
             reservation.display_dates_list = [str(reservation.date)]
+        # --- Enhanced status logic for user dashboard (superuser_managereservations logic) ---
+        admin_approval_count = len(getattr(reservation, 'admin_approvals', {}) or {})
+        admin_rejection_count = len(getattr(reservation, 'admin_rejections', {}) or {})
+        if reservation.status == 'Rejected' or admin_rejection_count > 0:
+            reservation.display_status = 'Rejected by admin(s)'
+        elif reservation.status == 'Pending' and admin_approval_count < 4:
+            reservation.display_status = f'Pending ({admin_approval_count}/4 admins approved)'
+        elif admin_approval_count == 4 and reservation.status == 'Admin Approved':
+            reservation.display_status = '4 admins approved, wait for billing'
+        elif reservation.status == 'Billing Uploaded':
+            reservation.display_status = 'Processing (billing uploaded, wait for payment)'
+        elif reservation.status == 'Payment Pending':
+            reservation.display_status = 'Processing (payment uploaded, wait for verification)'
+        elif reservation.status == 'Payment Approved':
+            reservation.display_status = 'Processing (payment verified, wait for security pass)'
+        elif reservation.status == 'Security Pass Issued':
+            reservation.display_status = 'Processing (security pass issued, wait for completion)'
+        elif reservation.status == 'Completed':
+            reservation.display_status = 'Completed'
+        else:
+            reservation.display_status = getattr(reservation, 'approval_status', reservation.status)
     return render(request, 'user_portal/user_myreservation.html', {'reservations': reservations})
 
 
@@ -119,6 +145,40 @@ def user_makereservation(request):
         if not all(required_fields):
             messages.error(request, 'Please fill in all required fields.')
             return redirect('user_portal:user_makereservation')
+        # Overlap check for each date and facility
+        blocked_found = False
+        blocked_message = None
+        for date in date_list:
+            for facility_name in facilities:
+                try:
+                    facility_obj = Facility.objects.get(name=facility_name)
+                except Facility.DoesNotExist:
+                    messages.error(request, f"Facility '{facility_name}' does not exist.")
+                    return redirect('user_portal:user_makereservation')
+                blocked_qs = BlockedDate.objects.filter(
+                    facility=facility_obj,
+                    date=date
+                ).filter(
+                    Q(start_time__lt=end_time, end_time__gt=start_time)
+                )
+                if blocked_qs.exists():
+                    blocked_found = True
+                    blocked = blocked_qs.first()
+                    blocked_message = f'The facility "{facility_name}" is not available on {date} from {blocked.start_time.strftime("%H:%M")} to {blocked.end_time.strftime("%I:%M%p")}. This time slot is blocked'
+        if blocked_found:
+            messages.error(request, blocked_message or 'Please review your reservation. One or more selected dates and facilities are blocked.')
+            return redirect('user_portal:user_makereservation')
+        # Existing reservation overlap check
+        for date in date_list:
+            overlap = Reservation.objects.filter(
+                facility__in=facilities,
+                date=date,
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            ).exclude(status__in=['Rejected', 'Cancelled']).exists()
+            if overlap:
+                messages.error(request, 'The selected facility, date, or time is already reserved. Please look at the calendar.')
+                return redirect('user_portal:user_makereservation')
         # Save a reservation for each selected date
         try:
             reserved_dates_str = ', '.join(date_list)
@@ -320,10 +380,15 @@ def update_profile(request):
 
 @login_required
 def get_reservations(request):
-    # Only get completed reservations for the calendar
+    # Get completed reservations for the calendar
     reservations = Reservation.objects.filter(status='Completed')
     
+    # Get blocked dates
+    blocked_dates = BlockedDate.objects.all()
+    
     events = []
+    
+    # Add completed reservations
     for r in reservations:
         # Convert facilities_needed to a string with quantities (assuming it's a dictionary)
         facilities_list = []
@@ -349,6 +414,23 @@ def get_reservations(request):
             'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
             'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
             'status': r.status,
+            'color': '#28a745'  # Green for completed reservations
+        })
+    
+    # Add blocked dates
+    for bd in blocked_dates:
+        events.append({
+            'title': f"{bd.facility.name} (Blocked)",
+            'start': f"{bd.date}T{bd.start_time}",
+            'end': f"{bd.date}T{bd.end_time}",
+            'event_type': 'Blocked',
+            'facilities_needed': bd.facility.name,
+            'manpower_needed': 'None',
+            'status': 'Blocked',
+            'color': '#dc3545',  # Red for blocked dates
+            'extendedProps': {
+                'reason': bd.reason
+            }
         })
     
     return JsonResponse(events, safe=False)
@@ -636,16 +718,41 @@ def check_date_availability(request):
     """AJAX endpoint to check if a date is available for reservation"""
     date = request.GET.get('date')
     facility = request.GET.get('facility')
+    start_time = request.GET.get('start_time')
+    end_time = request.GET.get('end_time')
     
-    if not date or not facility:
+    if not all([date, facility, start_time, end_time]):
         return JsonResponse({
             'available': False,
-            'error': 'Missing date or facility'
+            'error': 'Missing required parameters'
         })
     
-    temp_reservation = Reservation()
-    is_available = temp_reservation.check_date_availability(date, facility)
+    # Check for blocked dates
+    blocked = BlockedDate.objects.filter(
+        facility__name=facility,
+        date=date,
+        start_time__lt=end_time,
+        end_time__gt=start_time
+    ).first()
+    
+    if blocked:
+        return JsonResponse({
+            'available': False,
+            'error': 'This time slot is blocked',
+            'blocked_start_time': blocked.start_time.strftime('%I:%M %p'),
+            'blocked_end_time': blocked.end_time.strftime('%I:%M %p'),
+            'blocked_date': blocked.date.strftime('%Y-%m-%d'),
+            'blocked_facility': blocked.facility.name,
+        })
+    
+    # Check for existing reservations
+    overlap = Reservation.objects.filter(
+        facility__icontains=facility,
+        date=date,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    ).exclude(status__in=['Rejected', 'Cancelled']).exists()
     
     return JsonResponse({
-        'available': is_available
+        'available': not overlap
     })

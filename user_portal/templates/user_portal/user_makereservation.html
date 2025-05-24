@@ -11,15 +11,6 @@
     <title>User Dashboard</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
-<<<<<<< HEAD
-</head>
-<body>
- 
-
-    <main class="user_makereservation-container">
-        <h2>Reservation for the Use of the University Sports Facilities</h2>
-        <form method="POST">
-=======
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
@@ -28,27 +19,33 @@
         <h2>Reservation for the Use of the University Sports Facilities</h2>
 
         {% if messages %}
-        <div class="messages">
+        <div class="messages" id="django-messages">
             {% for message in messages %}
             <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}">
                 {{ message }}
             </div>
             {% endfor %}
         </div>
+        {% for message in messages %}
+          {% if "blocked" in message.message|lower %}
+            <script>
+              document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('errorModalBody').textContent = "{{ message.message|escapejs }}";
+                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                errorModal.show();
+              });
+            </script>
+          {% endif %}
+        {% endfor %}
         {% endif %}
 
         <form method="POST" id="reservationForm" enctype="multipart/form-data">
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
             {% csrf_token %}
 
             <!-- Organization Information -->
             <div class="make_reservation-form-group">
                 <label for="organization">Name of Unit/School/Office/Organization</label>
-<<<<<<< HEAD
-                <input type="text" id="organization" name="organization" placeholder="e.g., School of Business and Management">
-=======
                 <input type="text" id="organization" name="organization" placeholder="e.g., School of Business and Management" required>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
             </div>
 
             <div class="make_reservation-form-group">
@@ -61,27 +58,6 @@
                 <input type="tel" id="contact_number" name="contact_number" pattern="[0-9]{10,11}" placeholder="e.g., 09123456789" required>
             </div>
 
-<<<<<<< HEAD
-            <!-- Reservation Information -->
-            <div class="make_reservation-form-group">
-                <label for="date_reserved">Date Reserved</label>
-                <input type="date" id="date_reserved" name="date_reserved" required>
-            </div>
-
-            <div class="make_reservation-form-group">
-                <label for="insider_count">Estimated No. of Participants (Insider)</label>
-                <input type="number" id="insider_count" name="insider_count" min="0">
-            </div>
-
-            <div class="make_reservation-form-group">
-                <label for="outsider_count">Estimated No. of Participants (Outsider)</label>
-                <input type="number" id="outsider_count" name="outsider_count" min="0">
-            </div>
-
-            <div class="make_reservation-form-group">
-                <label for="date">Date of Actual Use</label>
-                <input type="date" id="date" name="date" required>
-=======
             <!-- Date Reserved -->
             <div class="make_reservation-form-group">
                 <label for="date_reserved">Date Reserved</label>
@@ -103,31 +79,10 @@
                 <label for="dates">Dates of Actual Use (Select one or more)</label>
                 <input type="text" id="dates" name="dates" class="multi-date-picker" placeholder="Select dates" required readonly>
                 <small>You can select multiple dates. Click the field to pick dates.</small>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
             </div>
 
             <div class="make_reservation-form-group">
                 <label for="start_time">Start Time</label>
-<<<<<<< HEAD
-                <input type="time" name="start_time" id="start_time" required>
-            </div>
-            
-            <div class="make_reservation-form-group">
-                <label for="end_time">End Time</label>
-                <input type="time" name="end_time" id="end_time" required>
-            </div>
-
-            <!-- Facilities -->
-            <div class="make_reservation-form-group">
-                <label for="facility">Facility to be used</label>
-                <select name="facility" id="facility" required>
-                    <option value="">Select a facility</option>
-                    <option value="Gymnasium">Gymnasium</option>
-                    <option value="Covered Court">Covered Court</option>
-                    <option value="Football Field">Football Field</option>
-                    <option value="Table Tennis Dug-out">Table Tennis Dug-out</option>
-                </select>
-=======
                 <select id="start_time" name="start_time" required>
                     <option value="00:00">12:00 AM</option>
                     <option value="01:00">01:00 AM</option>
@@ -194,7 +149,6 @@
                     <label><input type="checkbox" name="facilities" value="Football Field"> Football Field</label>
                     <label><input type="checkbox" name="facilities" value="Table Tennis Dug-out"> Table Tennis Dug-out</label>
                 </div>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
             </div>
 
             <!-- Event Type -->
@@ -267,64 +221,41 @@
                 </div>
             </div>
 
-<<<<<<< HEAD
-=======
             <!-- Letter Submission -->
             <div class="make_reservation-form-group">
                 <label for="letter">Reservation Request Letter (PDF/DOCX)</label>
                 <input type="file" id="letter" name="letter" accept=".pdf,.doc,.docx" required>
             </div>
 
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
             <div class="make_reservation-form-group">
                 <input type="submit" value="Submit">
             </div>
         </form>
     </main>
 
-<<<<<<< HEAD
-    <script>
-        document.querySelector('form').addEventListener('submit', function(e) {
-            // Check if a facility is selected from the dropdown
-            const facility = document.getElementById('facility').value;
-            if (!facility) {
-                e.preventDefault();
-                alert('Please select a facility');
-                return;
-            }
-
-            // Check if at least one event type is selected
-            const eventTypes = document.querySelectorAll('input[name="event_type"]:checked');
-            if (eventTypes.length === 0) {
-                e.preventDefault();
-                alert('Please select at least one event type');
-                return;
-            }
-
-            // Validate time slots
-            const startTime = document.getElementById('start_time').value;
-            const endTime = document.getElementById('end_time').value;
-            if (startTime >= endTime) {
-                e.preventDefault();
-                alert('End time must be after start time');
-                return;
-            }
-
-            // Validate date
-            const date = document.getElementById('date').value;
-            const today = new Date().toISOString().split('T')[0];
-            if (date < today) {
-                e.preventDefault();
-                alert('Date cannot be in the past');
-                return;
-            }
-=======
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script>
+<script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var today = new Date().toISOString().split('T')[0];
+            if (window.flatpickr) {
+                flatpickr('#dates', {
+                    mode: 'multiple',
+                    dateFormat: 'Y-m-d',
+                    minDate: today // Prevent past dates
+                });
+            }
+        });
+
         // Multi-date picker using flatpickr (or fallback to simple JS if not available)
         document.addEventListener('DOMContentLoaded', function() {
+            var today = new Date().toISOString().split('T')[0];
             if (window.flatpickr) {
-                flatpickr('#dates', {mode: 'multiple', dateFormat: 'Y-m-d'});
+                flatpickr('#dates', {
+                    mode: 'multiple', 
+                    dateFormat: 'Y-m-d',
+                    minDate: today // Add this line to prevent past dates
+                });
             } else {
                 // fallback: let user type comma-separated dates
                 document.getElementById('dates').removeAttribute('readonly');
@@ -332,17 +263,97 @@
             }
             // Remove clock-based validation, use per-hour dropdowns
             const form = document.getElementById('reservationForm');
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
                 const start = document.getElementById('start_time').value;
                 const end = document.getElementById('end_time').value;
                 if (start === end) {
-                    e.preventDefault();
                     alert('Start and end time cannot be the same.');
+                    return;
                 }
+                
+                // Get selected dates and facilities
+                const datesInput = document.getElementById('dates').value;
+                if (!datesInput) {
+                    alert('Please select at least one date.');
+                    return;
+                }
+                
+                const selectedDates = datesInput.split(',');
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Check for past dates
+                for (let date of selectedDates) {
+                    date = date.trim();
+                    if (date < today) {
+                        alert('Cannot select past dates. Please choose current or future dates only.');
+                        return;
+                    }
+                }
+                
+                // Get selected facilities
+                const facilities = Array.from(document.querySelectorAll('input[name="facilities"]:checked')).map(cb => cb.value);
+                if (facilities.length === 0) {
+                    alert('Please select at least one facility.');
+                    return;
+                }
+                
+                // Check availability for each date and facility combination
+                for (let date of selectedDates) {
+                    date = date.trim();
+                    for (let facility of facilities) {
+                        try {
+                            const response = await fetch(`/user/reservations/check-date/?date=${date}&facility=${facility}&start_time=${start}&end_time=${end}`);
+                            const data = await response.json();
+                            
+                            if (!data.available) {
+                                let errorMsg = "";
+                                if (data.blocked_start_time && data.blocked_end_time) {
+                                    errorMsg = `The facility "${facility}" is not available on ${data.blocked_date} from ${data.blocked_start_time} to ${data.blocked_end_time}. This time slot is blocked.`;
+                                } else {
+                                    errorMsg = `The facility "${facility}" is not available on ${date} from ${start} to ${end}. ${data.error || ''}`;
+                                }
+                                document.getElementById('errorModalBody').textContent = errorMsg;
+                                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                                errorModal.show();
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('Error checking availability:', error);
+                            document.getElementById('errorModalBody').textContent = 'An error occurred while checking availability. Please try again.';
+                            var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                            errorModal.show();
+                            return;
+                        }
+                    }
+                }
+                
+                // If all checks pass, submit the form
+                form.submit();
             });
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
         });
     </script>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title" id="errorModalLabel">Error</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="errorModalBody">
+            <!-- Error message will be inserted here -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 {% endblock %}

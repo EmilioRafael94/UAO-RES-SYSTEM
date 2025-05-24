@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-&co%ozq83cke8ca0($=s^8-b6%qb9q3r2i2zk4^2j#h*dg_q!j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'emiliorubio94.pythonanywhere.com']
 
 
 # Application definition
@@ -55,7 +55,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -63,7 +62,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'admin_portal' / 'templates'],
+        'DIRS': [BASE_DIR / 'admin_portal' / 'templates'],  # Add this line
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -71,8 +70,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'social_django.context_processors.backends',
-                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -148,10 +145,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ayanokoji2122@gmail.com'
 EMAIL_HOST_PASSWORD = 'qoglzqqzqnjtuuao'
 
-AUTHENTICATION_BACKENDS = (
+AUTHENTICATION_BACKENDS = [
     'social_core.backends.google.GoogleOAuth2',
     'django.contrib.auth.backends.ModelBackend',
-)
+]
 
 # Google OAuth2 keys (replace with your actual credentials)
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '663579820125-gg0547k393709luns7e4e0jdgfcq7mgm.apps.googleusercontent.com'
@@ -161,6 +158,8 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI = 'https://emiliorubio94.pythonanywhere.com/complete/google-oauth2/'
 
 SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
@@ -190,3 +189,4 @@ SOCIAL_AUTH_FORBIDDEN_URL = '/accounts/forbidden/'
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/user/dashboard/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'

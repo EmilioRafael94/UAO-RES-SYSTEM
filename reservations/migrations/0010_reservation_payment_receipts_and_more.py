@@ -11,14 +11,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='reservation',
-            name='payment_receipts',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.FileField(upload_to='receipts/'), blank=True, default=list, help_text='Multiple payment receipts.', null=True, size=None),
-        ),
-        migrations.AddField(
-            model_name='reservation',
-            name='security_pass_returned_files',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.FileField(upload_to='security_passes/'), blank=True, default=list, help_text='Multiple returned security pass files.', null=True, size=None),
-        ),
+        # The following ArrayFields are not supported in SQLite and cause migration errors
+        # migrations.AddField(
+        #     model_name='reservation',
+        #     name='payment_receipts',
+        #     field=django.contrib.postgres.fields.ArrayField(base_field=models.FileField(upload_to='receipts/'), blank=True, default=list, help_text='Multiple payment receipts.', null=True, size=None),
+        # ),
+        # migrations.AddField(
+        #     model_name='reservation',
+        #     name='security_pass_returned_files',
+        #     field=django.contrib.postgres.fields.ArrayField(base_field=models.FileField(upload_to='security_passes/'), blank=True, default=list, help_text='Multiple returned security pass files.', null=True, size=None),
+        # ),
     ]

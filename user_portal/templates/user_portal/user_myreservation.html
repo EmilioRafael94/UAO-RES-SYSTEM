@@ -4,6 +4,10 @@
 {% block content %}
 <div class="container mt-4">
     <h2>My Reservations</h2>
+    <div class="mb-3">
+        <a href="?sort=newest" class="btn btn-primary btn-sm">Newest</a>
+        <a href="?sort=oldest" class="btn btn-primary btn-sm">Oldest</a>
+    </div>
     {% if reservations %}
         <div class="row">
         {% for reservation in reservations %}
@@ -18,9 +22,6 @@
                                 <p><strong>Organization:</strong> {{ reservation.organization }}</p>
                                 <p><strong>Representative:</strong> {{ reservation.representative }}</p>
                                 <p><strong>Date Reserved:</strong> {{ reservation.date_reserved|date:"M d, Y" }}</p>
-<<<<<<< HEAD
-                                <p><strong>Date Actual Use:</strong> {{ reservation.date|date:"M d, Y" }}</p>
-=======
                                 <p><strong>Date(s) of Actual Use:</strong></p>
                                 <ul class="mb-0">
                                 {% for date in reservation.display_dates_list %}
@@ -31,18 +32,14 @@
                                 </ul>
                                 <p><strong>Insider Count:</strong> {{ reservation.insider_count }}</p>
                                 <p><strong>Outsider Count:</strong> {{ reservation.outsider_count }}</p>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                                 <p><strong>Start Time:</strong> {{ reservation.start_time|time:"h:i A" }}</p>
                                 <p><strong>End Time:</strong> {{ reservation.end_time|time:"h:i A" }}</p>
                                 <p><strong>Facility Use:</strong> {{ reservation.facility_use|default:"None" }}</p>
                                 <p><strong>Event Type:</strong> {{ reservation.event_type|default:"N/A" }}</p>
                                 <p><strong>Status:</strong> {{ reservation.display_status }}</p>
-<<<<<<< HEAD
-=======
                                 {% if reservation.letter %}
                                 <p><strong>Request Letter:</strong> <a href="{{ reservation.letter.url }}" target="_blank">View Letter</a></p>
                                 {% endif %}
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                             </div>
                             <div class="col-md-3">
                                 <p><strong>Facilities Needed:</strong></p>
@@ -67,10 +64,9 @@
                         </div>
                         <div class="mt-3">
                             {% if reservation.status != 'Completed' %}
-                            <a href="{% url 'user_portal:edit_reservation' reservation.id %}" class="btn btn-primary btn-sm">Edit</a>
                             <form action="{% url 'user_portal:delete_reservation' reservation.id %}" method="post" style="display:inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                <button type="submit" class="btn btn-danger btn-sm">Cancel Reservation</button>
                             </form>
                             {% endif %}
                         </div>
@@ -114,15 +110,12 @@
                                                     <input type="file" name="payment_receipt" required>
                                                     <button type="submit" class="btn btn-success btn-sm">Upload Receipt</button>
                                                 </form>
-<<<<<<< HEAD
-=======
                                                 {% elif reservation.status == 'Payment Rejected' %}
                                                 <form action="{% url 'user_portal:upload_receipt' reservation.id %}" method="post" enctype="multipart/form-data">
                                                     {% csrf_token %}
                                                     <input type="file" name="payment_receipt" required>
                                                     <button type="submit" class="btn btn-warning btn-sm">Re-upload Receipt</button>
                                                 </form>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                                                 {% elif reservation.payment_receipt %}
                                                     <a href="{{ reservation.payment_receipt.url }}" target="_blank">View Receipt</a>
                                                 {% else %}
@@ -134,6 +127,8 @@
                                                     Approved
                                                 {% elif reservation.status == 'Payment Rejected' %}
                                                     Rejected
+                                                {% elif reservation.status == 'Completed' %}
+                                                    Verified
                                                 {% elif reservation.payment_receipt %}
                                                     Pending
                                                 {% else %}
@@ -191,15 +186,12 @@
                                                     <input type="file" name="security_pass_returned" required>
                                                     <button type="submit" class="btn btn-success btn-sm">Upload Security Pass</button>
                                                 </form>
-<<<<<<< HEAD
-=======
                                                 {% elif reservation.security_pass_status == 'Rejected' %}
                                                 <form action="{% url 'user_portal:upload_security_pass' reservation.id %}" method="post" enctype="multipart/form-data">
                                                     {% csrf_token %}
                                                     <input type="file" name="security_pass_returned" required>
                                                     <button type="submit" class="btn btn-warning btn-sm">Re-upload Security Pass</button>
                                                 </form>
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
                                                 {% elif reservation.security_pass_returned %}
                                                     <a href="{{ reservation.security_pass_returned.url }}" target="_blank">View Returned Pass</a>
                                                 {% else %}

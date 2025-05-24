@@ -117,7 +117,7 @@
 </div>
 
 <!-- Verification Modal -->
-<div class="modal fade{% if show_verification_modal %} show d-block{% endif %}" id="verifyEmailModal" tabindex="-1" aria-labelledby="verifyEmailModalLabel" aria-hidden="true"{% if show_verification_modal %} style="display:block; background:rgba(0,0,0,0.5);"{% endif %}>
+<div class="modal fade {% if show_verification_modal %}show d-block{% endif %}" id="verifyEmailModal" tabindex="-1" aria-labelledby="verifyEmailModalLabel" aria-hidden="true" style="{% if show_verification_modal %}display:block; background:rgba(0,0,0,0.5);{% endif %}">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="post">

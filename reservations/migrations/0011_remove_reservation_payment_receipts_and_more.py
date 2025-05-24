@@ -10,12 +10,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='reservation',
-            name='payment_receipts',
-        ),
-        migrations.RemoveField(
-            model_name='reservation',
-            name='security_pass_returned_files',
-        ),
+        # migrations.RemoveField(
+        #     model_name='reservation',
+        #     name='payment_receipts',
+        # ),
+        # migrations.RemoveField(
+        #     model_name='reservation',
+        #     name='security_pass_returned_files',
+        # ),
     ]

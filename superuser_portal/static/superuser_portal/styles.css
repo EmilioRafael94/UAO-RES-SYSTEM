@@ -217,29 +217,11 @@ header {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-<<<<<<< HEAD
-    padding-bottom: 10px;
-=======
     padding: 1rem;
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
     border-bottom: 1px solid #e0e0e0;
 }
 
 .modal-title {
-<<<<<<< HEAD
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #0D47A1;
-}
-
-.close-button {
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
-    background: none;
-    color: #666;
-=======
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
@@ -258,7 +240,6 @@ header {
 
 .btn-close:hover {
     color: #333;
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
 }
 
 /* Table Styles */
@@ -310,8 +291,6 @@ header {
     color: #721c24;
 }
 
-<<<<<<< HEAD
-=======
 .badge.badge-reupload {
     display: inline-block;
     background: #ff9800;
@@ -325,7 +304,6 @@ header {
     letter-spacing: 0.5px;
 }
 
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
 /* Responsive Design */
 @media screen and (max-width: 768px) {
     header {
@@ -1007,9 +985,6 @@ header {
 .fas, .far {
     width: 16px;
     text-align: center;
-<<<<<<< HEAD
-}
-=======
 }
 
 .profile-container {
@@ -1148,4 +1123,3 @@ header {
         height: 90px;
     }
 }
->>>>>>> e55cbd74f12d52e2c157cdfaca232dda05efe32d
