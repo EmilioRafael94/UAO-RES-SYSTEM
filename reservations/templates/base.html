@@ -1,0 +1,101 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{% static 'user_portal/styles.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% block extra_head %}{% endblock %}
+
+    <style>
+/* Ensure font size and gap are consistent with others */
+nav.navbar .navbar-nav .nav-link {
+    font-size: 12 !important;
+}
+
+/* Remove the hover underline */
+.navbar-nav .nav-link::after {
+    content: none !important; /* Remove the underline effect */
+}
+
+/* Make the blue navbar bar taller */
+.navbar {
+    min-height: 70px !important;  /* Adjust this value as needed */
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Smooth fade-out effect on hover */
+.navbar-nav .nav-link {
+    transition: color 0.3s ease, background-color 0.3s ease, opacity 0.3s ease; /* Adding opacity transition */
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: transparent !important; /* Ensure the background disappears */
+    color: transparent !important;  /* Make the text fade out */
+    opacity: 0;  /* Make the item completely fade out */
+}
+
+
+/* Shift all nav items slightly to the left */
+
+/* Hover effect for the navbar items */
+.navbar-nav .nav-link:hover::after {
+    opacity: 1;
+}
+
+.container-fluid {
+    padding-left: 30px !important;
+}
+    </style>
+</head>
+<body>
+
+    {% if user.is_authenticated and request.path != '/accounts/register/' and request.path != '/accounts/login/' %}
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg" style="background-color: #0D47A1;">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center text-white" href="#">
+                <img src="{% static 'user_portal/xavier_logo.png' %}" alt="XU Logo" width="40" height="40" class="me-2">
+                <strong>Xavier University Athletics Office</strong>
+            </a>
+            <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    {% if user.is_superuser %}
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'superuser_portal:superuser_dashboard' %}">Superuser Dashboard</a></li>
+                    {% elif user.is_staff %}
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'admin_portal:admin_dashboard' %}">Admin Dashboard</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'user_portal:user_dashboard' %}">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'user_portal:user_myreservation' %}">My Reservations</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'user_portal:user_makereservation' %}">Make Reservation</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'user_portal:user_calendar' %}">View Calendar</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'user_portal:user_profile' %}">Profile</a></li>
+                       
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main content -->
+    <main class="container mt-4">
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>
