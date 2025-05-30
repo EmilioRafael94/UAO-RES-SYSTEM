@@ -12,23 +12,18 @@ from superuser_portal.models import BlockedDate
 def is_admin(user):
     return user.is_staff or user.is_superuser
 
-# Admin Dashboard View
 @login_required
 @user_passes_test(is_admin)
 def admin_dashboard(request):
-    # Get all pending reservations
     pending = Reservation.objects.filter(status='Pending').order_by('-date')
     pending_count = pending.count()
 
-    # Get reservations approved by this specific admin
     approved = Reservation.objects.filter(
         admin_approvals__has_key=request.user.username
-    ).order_by('-date')[:5]  # Show last 5 approved
+    ).order_by('-date')[:5]
 
-    # Get all rejected reservations (keeping it as it was before)
     rejected = Reservation.objects.filter(status='Rejected').order_by('-date')[:10]
 
-    # Get selected reservation if ID is provided
     selected_reservation = None
     reservation_id = request.GET.get('id')
     if reservation_id and reservation_id.isdigit():
@@ -43,7 +38,6 @@ def admin_dashboard(request):
     }
     return render(request, 'admin_portal/admin_dashboard.html', context)
 
-# Approve Reservation View
 @login_required
 @user_passes_test(is_admin)
 def approve_reservation(request, reservation_id):
@@ -52,14 +46,11 @@ def approve_reservation(request, reservation_id):
         admin_notes = request.POST.get('admin_notes', '').strip()
         admin_username = request.user.username
 
-        # Add admin approval
         reservation.add_admin_approval(admin_username, admin_notes)
 
-        # Ensure the reservation status is updated to 'Admin Approved' if it meets the criteria
         if len(reservation.admin_approvals) >= 4:
             reservation.status = 'Admin Approved'
             reservation.save()
-            # Send email: All admins approved
             send_reservation_email(
                 reservation.user,
                 'Reservation Approved by Admins',
@@ -67,7 +58,6 @@ def approve_reservation(request, reservation_id):
                 {'subject': 'Reservation Approved by Admins', 'user': reservation.user, 'reservation': reservation}
             )
 
-        # Create notification for the user about approval
         Notification.objects.create(
             user=reservation.user,
             message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been approved by {admin_username}. {admin_notes if admin_notes else ''}",
@@ -77,7 +67,6 @@ def approve_reservation(request, reservation_id):
         messages.success(request, f"Reservation for {reservation.facility_use} approved by {admin_username}.")
     return redirect('admin_portal:admin_dashboard')
 
-# Reject Reservation View
 @login_required
 @user_passes_test(is_admin)
 def reject_reservation(request, reservation_id):
@@ -90,10 +79,8 @@ def reject_reservation(request, reservation_id):
             messages.error(request, "Please provide a reason for rejection.")
             return redirect('admin_portal:admin_dashboard')
 
-        # Add admin rejection
         reservation.add_admin_rejection(admin_username, rejection_reason)
 
-        # Send email: Rejected
         send_reservation_email(
             reservation.user,
             'Reservation Rejected',
@@ -101,7 +88,6 @@ def reject_reservation(request, reservation_id):
             {'subject': 'Reservation Rejected', 'user': reservation.user, 'reservation': reservation}
         )
 
-        # Create notification for the user about rejection
         Notification.objects.create(
             user=reservation.user,
             message=f"Your reservation for {reservation.facility_use} on {reservation.date} has been rejected. Reason: {rejection_reason}",
@@ -111,14 +97,12 @@ def reject_reservation(request, reservation_id):
         messages.success(request, f"Reservation for {reservation.facility_use} rejected.")
     return redirect('admin_portal:admin_dashboard')
 
-# Admin Calendar View
 @login_required
 @user_passes_test(is_admin)
 def calendar_view(request):
-    reservations = get_approved_reservations(request)  # Ensure this is only approved reservations
+    reservations = get_approved_reservations(request)
     return render(request, 'admin_portal/calendar.html', {'reservations': reservations})
 
-# Fetch Approved Reservations for Calendar
 @login_required
 @user_passes_test(is_admin)
 def get_approved_reservations(request):
@@ -143,7 +127,6 @@ def get_approved_reservations(request):
             }
         })
 
-    # Add blocked dates
     for bd in BlockedDate.objects.all():
         events.append({
             'title': f"{bd.facility.name} (Blocked)",
@@ -156,25 +139,21 @@ def get_approved_reservations(request):
 
     return JsonResponse(events, safe=False)
 
-# Admin Profile View
 @login_required
 @user_passes_test(is_admin)
 def admin_profile(request):
     profile = Profile.objects.filter(user=request.user).first()
     return render(request, 'admin_portal/admin_profile.html', {'profile': profile})
 
-# Update Admin Profile
 @login_required
 @user_passes_test(is_admin)
 def update_profile(request):
     if request.method == 'POST':
-        # Get the form data from POST request
         name = request.POST.get('name')
         email = request.POST.get('email')
         course = request.POST.get('course')
         phone = request.POST.get('phone')
         
-        # Update the user model
         user = request.user
         name_parts = name.split(maxsplit=1)
         user.first_name = name_parts[0]
@@ -182,15 +161,12 @@ def update_profile(request):
         user.email = email
         user.save()
         
-        # Update the profile model (ensure that Profile exists for each user)
         profile, created = Profile.objects.get_or_create(user=user)
         profile.course = course
         profile.phone = phone
         profile.save()
         
-        # Redirect back to the profile page after update
         messages.success(request, "Profile updated successfully!")
         return redirect('admin_portal:admin_profile')
     
-    # If not POST, redirect back to the profile page
     return redirect('admin_portal:admin_profile')

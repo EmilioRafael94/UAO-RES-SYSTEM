@@ -5,7 +5,7 @@
 <div class="container mt-4">
     <h2>My Reservations Dashboard</h2>
     <div class="row">
-        <!-- Pending Reservations -->
+        
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-warning text-white">
@@ -27,7 +27,13 @@
                                 <tr>
                                     <td>{{ reservation.facility_use }}</td>
                                     <td>{{ reservation.date }}</td>
-                                    <td>{{ reservation.formatted_time }}</td>
+                                    <td>
+                                        {% if reservation.start_time and reservation.end_time %}
+                                            {{ reservation.start_time|time:'h:i A' }} - {{ reservation.end_time|time:'h:i A' }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
                                     <td>{{ reservation.approval_status }}</td>
                                 </tr>
                                 {% empty %}
@@ -39,7 +45,7 @@
                 </div>
             </div>
         </div>
-        <!-- Approved Reservations -->
+        
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-info text-white">
@@ -61,7 +67,13 @@
                                 <tr>
                                     <td>{{ reservation.facility_use }}</td>
                                     <td>{{ reservation.date }}</td>
-                                    <td>{{ reservation.formatted_time }}</td>
+                                    <td>
+                                        {% if reservation.start_time and reservation.end_time %}
+                                            {{ reservation.start_time|time:'h:i A' }} - {{ reservation.end_time|time:'h:i A' }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
                                     <td>{{ reservation.approval_status }}</td>
                                 </tr>
                                 {% empty %}
@@ -74,7 +86,7 @@
             </div>
         </div>
     </div>
-    <!-- Notifications Section -->
+    
     <div class="row">
         <div class="col-12">
             <div class="card mb-4">

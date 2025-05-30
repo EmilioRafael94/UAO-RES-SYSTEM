@@ -70,6 +70,137 @@
     .close:hover {
         opacity: .75;
     }
+
+    /* File Link Styling - consistent with billing statement */
+    .file-link {
+        display: inline-block;
+        padding: 8px 16px;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .file-link:hover {
+        background-color: #0056b3;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .file-link:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    
+    /* Payment section spacing improvements */
+    .verification-actions {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .verification-actions .btn {
+        margin-right: 10px;
+    }
+    
+    /* Button Styles */
+    .btn {
+        display: inline-block;
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        text-decoration: none;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-image: none;
+    }
+    
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: #fff;
+    }
+    
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: #fff;
+    }
+    
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: #fff;
+    }
+    
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+        color: #fff;
+    }
+    
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+    }
+    
+    .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #004085;
+        color: #fff;
+    }
+    
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #545b62;
+        border-color: #4e555b;
+        color: #fff;
+    }
+    
+    /* Alert Styles */
+    .alert {
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .alert-success {
+        color: #155724;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+    
+    .alert-danger {
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+    
+    .alert-warning {
+        color: #856404;
+        background-color: #fff3cd;
+        border-color: #ffeaa7;
+    }
+    
+    .mt-3 {
+        margin-top: 1rem;
+    }
 </style>
 {% endblock %}
 
@@ -244,6 +375,13 @@ function updateReservationRowStatus(reservationId, newStatus) {
 
 function verifyPayment(reservationId) {
     if (!confirm('Verify this payment?')) return;
+    
+    // Hide buttons immediately to prevent double-click
+    const verifyBtn = document.getElementById('verifyPaymentBtn');
+    const rejectBtn = document.getElementById('rejectPaymentBtn');
+    if (verifyBtn) verifyBtn.style.display = 'none';
+    if (rejectBtn) rejectBtn.style.display = 'none';
+    
     fetchWithToken(`/superuser_portal/verify_payment/${reservationId}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -257,17 +395,30 @@ function verifyPayment(reservationId) {
             updateReservationRowStatus(reservationId, 'Payment Approved');
         } else {
             alert('Error: ' + data.error);
+            // Show buttons again if there was an error
+            if (verifyBtn) verifyBtn.style.display = 'inline-block';
+            if (rejectBtn) rejectBtn.style.display = 'inline-block';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('An error occurred.');
+        // Show buttons again if there was an error
+        if (verifyBtn) verifyBtn.style.display = 'inline-block';
+        if (rejectBtn) rejectBtn.style.display = 'inline-block';
     });
 }
 
 function rejectPayment(reservationId) {
     const reason = prompt('Enter reason for rejection:');
     if (!reason) return;
+    
+    // Hide buttons immediately to prevent double-click
+    const verifyBtn = document.getElementById('verifyPaymentBtn');
+    const rejectBtn = document.getElementById('rejectPaymentBtn');
+    if (verifyBtn) verifyBtn.style.display = 'none';
+    if (rejectBtn) rejectBtn.style.display = 'none';
+    
     fetchWithToken(`/superuser_portal/verify_payment/${reservationId}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -281,11 +432,17 @@ function rejectPayment(reservationId) {
             updateReservationRowStatus(reservationId, 'Payment Rejected');
         } else {
             alert('Error: ' + data.error);
+            // Show buttons again if there was an error
+            if (verifyBtn) verifyBtn.style.display = 'inline-block';
+            if (rejectBtn) rejectBtn.style.display = 'inline-block';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('An error occurred.');
+        // Show buttons again if there was an error
+        if (verifyBtn) verifyBtn.style.display = 'inline-block';
+        if (rejectBtn) rejectBtn.style.display = 'inline-block';
     });
 }
 
@@ -542,14 +699,14 @@ function updatePaymentSection(payment) {
     const reservationStatus = window.currentReservationStatus;
     const adminApprovalCount = window.currentAdminApprovalCount;
     let paymentHtml = '';
-    // DEBUG: Log values to help diagnose why label isn't updating
-    console.log('PAYMENT DEBUG:', {
-        status: payment.status,
-        rejection_reason: payment.rejection_reason,
-        receipt_url: payment.receipt_url
-    });
+    
+    // Check if payment has been verified or rejected already
+    const isPaymentVerified = payment.verified || payment.status === 'Payment Approved';
+    const isPaymentRejected = payment.rejected || payment.status === 'Payment Rejected';
+    
     // Mirror security pass logic: show reupload if status is 'Payment Pending' and there is a previous rejection reason
     const isReupload = payment.status === 'Payment Pending' && payment.rejection_reason && payment.receipt_url;
+    
     if (reservationStatus === 'Rejected') {
         paymentHtml = `<div class="alert alert-danger">Rejected by admin(s). No further actions allowed.</div>`;
     } else if (reservationStatus === 'Pending' || adminApprovalCount < 4) {
@@ -557,38 +714,54 @@ function updatePaymentSection(payment) {
     } else {
         if (payment.receipt_url) {
             paymentHtml = `
-                <div class="receipt-section">
-                    <div class="receipt-preview">
-                        <a href="${payment.receipt_url}" target="_blank" class="btn btn-sm btn-primary">
+                <div class="file-section">
+                    <div class="receipt-preview mb-3">
+                        <a href="${payment.receipt_url}" target="_blank" class="file-link">
                             ${isReupload ? 'View Reuploaded Payment Receipt' : 'View Payment Receipt'}
                         </a>
-                    </div>
-                    <div class="verification-actions mt-3">
+                    </div>`;
+            
+            // Show buttons only if payment hasn't been verified or rejected yet
+            if (!isPaymentVerified && !isPaymentRejected) {
+                paymentHtml += `
+                    <div class="verification-actions">
                         <button type="button" class="btn btn-success" id="verifyPaymentBtn">
-                            <i class="fas fa-check-circle"></i> Verify Payment
+                            Verify Payment
                         </button>
                         <button type="button" class="btn btn-danger" id="rejectPaymentBtn">
-                            <i class="fas fa-times-circle"></i> Reject
+                            Reject
                         </button>
-                    </div>
-                </div>`;
+                    </div>`;
+            } else if (isPaymentVerified) {
+                paymentHtml += `<div class="alert alert-success mt-3">Payment has been verified and approved.</div>`;
+            } else if (isPaymentRejected && payment.rejection_reason) {
+                paymentHtml += `<div class="alert alert-danger mt-3"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
+            }
+            
+            paymentHtml += `</div>`;
         } else if (payment.status === 'Payment Rejected') {
-            paymentHtml = `<div class="alert alert-warning">User must re-upload a valid payment receipt.</div>`;
+            paymentHtml = `<div class="pending-section">User must re-upload a valid payment receipt.</div>`;
         } else {
             paymentHtml = `<div class="pending-section">Waiting for payment receipt...</div>`;
         }
-        if (payment.status === 'Payment Rejected' && payment.rejection_reason) {
-            paymentHtml += `<div class="alert alert-danger mt-2"><strong>Rejection Reason:</strong> ${payment.rejection_reason}</div>`;
-        }
     }
+    
     document.getElementById('paymentDetails').innerHTML = paymentHtml;
+    
+    // Only add event listeners if buttons exist (not verified/rejected)
     const verifyBtn = document.getElementById('verifyPaymentBtn');
     if (verifyBtn) {
-        verifyBtn.onclick = function() { verifyPayment(payment.id); };
+        verifyBtn.onclick = function() { 
+            const reservationId = document.getElementById('current-reservation-id').value;
+            verifyPayment(reservationId); 
+        };
     }
     const rejectBtn = document.getElementById('rejectPaymentBtn');
     if (rejectBtn) {
-        rejectBtn.onclick = function() { rejectPayment(payment.id); };
+        rejectBtn.onclick = function() { 
+            const reservationId = document.getElementById('current-reservation-id').value;
+            rejectPayment(reservationId); 
+        };
     }
 }
 
@@ -616,18 +789,28 @@ function updatePassSection(pass) {
                 <button type="submit" class="btn btn-primary btn-sm">Upload Security Pass</button>
             </form>`;
         } else if (pass.returned_url) {
+            // Check if pass has been confirmed or rejected already
+            const isPassConfirmed = pass.status === 'Completed' || pass.status === 'Confirmed';
+            const isPassRejected = pass.status === 'Rejected';
+            
             passHtml = `<div class="file-section">`;
             passHtml += `<a href="${pass.returned_url}" class="file-link" target="_blank">${isReupload ? 'View Reuploaded Security Pass' : 'View Uploaded Security Pass'}</a>`;
             if (pass.file_url) {
                 passHtml += `<div class='mt-2'><a href="${pass.file_url}" class="file-link" target="_blank">View Security Pass (Superuser Upload)</a></div>`;
             }
-            // Only show Confirm/Reject if user has uploaded their returned security pass
-            passHtml += `<div class='mt-2'>
-                    <button onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
-                    <button onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
-                </div>`;
+            
+            // Only show Confirm/Reject buttons if pass hasn't been confirmed or rejected yet
+            if (!isPassConfirmed && !isPassRejected) {
+                passHtml += `<div class='mt-2'>
+                        <button id="confirmPassBtn" onclick="confirmSecurityPass(${pass.id})" class="btn btn-success btn-sm">Confirm</button>
+                        <button id="rejectPassBtn" onclick="openRejectPassModal(${pass.id})" class="btn btn-danger btn-sm">Reject</button>
+                    </div>`;
+            } else if (isPassConfirmed) {
+                passHtml += `<div class="alert alert-success mt-2">Security pass has been confirmed and completed.</div>`;
+            }
+            
             passHtml += `<div class='mt-2'><strong>Status:</strong> ${pass.status || 'Pending'}</div>`;
-            if (pass.status === 'Rejected' && pass.rejection_reason) {
+            if (isPassRejected && pass.rejection_reason) {
                 passHtml += `<div class='alert alert-danger mt-2'><strong>Reason:</strong> ${pass.rejection_reason}</div>`;
             }
             passHtml += `</div>`;
@@ -681,6 +864,7 @@ function uploadSecurityPass(event) {
 
 function confirmSecurityPass(reservationId) {
     if (!confirm('Confirm this returned security pass?')) return;
+    
     fetchWithToken(`/superuser_portal/reservation/${reservationId}/confirm-security-pass/`, {
         method: 'POST'
     })

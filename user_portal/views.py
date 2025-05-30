@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from user_portal.forms import UserUpdateForm, ProfileUpdateForm
-from reservations.models import Reservation  # Changed from user_portal.models to reservations.models
+from reservations.models import Reservation
 from django.contrib import messages
 from django.utils import timezone
 import json
@@ -40,16 +40,15 @@ def user_myreservation(request):
     else:
         reservations = Reservation.objects.filter(user=request.user).order_by('-id')
     for reservation in reservations:
-        # Show the reserved dates if available, else show the single date
         if hasattr(reservation, 'reserved_dates') and reservation.reserved_dates:
             reservation.display_dates = reservation.reserved_dates
             reservation.display_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
         else:
             reservation.display_dates = reservation.date
             reservation.display_dates_list = [str(reservation.date)]
-        # --- Enhanced status logic for user dashboard (superuser_managereservations logic) ---
         admin_approval_count = len(getattr(reservation, 'admin_approvals', {}) or {})
         admin_rejection_count = len(getattr(reservation, 'admin_rejections', {}) or {})
+        # --- FIXED LOGIC FOR BILLING/SECURITY PASS STATUS ---
         if reservation.status == 'Rejected' or admin_rejection_count > 0:
             reservation.display_status = 'Rejected by admin(s)'
         elif reservation.status == 'Pending' and admin_approval_count < 4:
@@ -63,7 +62,8 @@ def user_myreservation(request):
         elif reservation.status == 'Payment Approved':
             reservation.display_status = 'Processing (payment verified, wait for security pass)'
         elif reservation.status == 'Security Pass Issued':
-            reservation.display_status = 'Processing (security pass issued, wait for completion)'
+            # Show billing as approved and security pass as issued
+            reservation.display_status = 'Billing approved, security pass issued, wait for completion'
         elif reservation.status == 'Completed':
             reservation.display_status = 'Completed'
         else:
@@ -76,7 +76,6 @@ def user_makereservation(request):
     today = timezone.now().date()
 
     if request.method == 'POST':
-        # Debug: Print all POST data
         print("\n=== Form Submission Data ===")
         for key, value in request.POST.items():
             print(f"{key}: {value}")
@@ -85,8 +84,7 @@ def user_makereservation(request):
         organization = request.POST.get('organization')
         representative = request.POST.get('representative')
         contact_number = request.POST.get('contact_number')
-        # Multi-date picker: getlist for multiple dates
-        dates = request.POST.get('dates')  # Comma-separated string from flatpickr
+        dates = request.POST.get('dates')
         if dates:
             date_list = [d.strip() for d in dates.split(',') if d.strip()]
         else:
@@ -94,18 +92,14 @@ def user_makereservation(request):
         start_time = request.POST.get('start_time')
         end_time = request.POST.get('end_time')
 
-        # Get Date Reserved from form
         date_reserved = request.POST.get('date_reserved')
-        # Facilities (multi-checkbox)
         facilities = request.POST.getlist('facilities')
-        # Event Types (multi-checkbox)
         event_types = request.POST.getlist('event_type')
         if not event_types:
             messages.error(request, 'Please select at least one event type')
             return redirect('user_portal:user_makereservation')
         event_type = ', '.join(event_types)
 
-        # Other Facilities Needed (quantities)
         facilities_needed = {
             'Long Tables': int(request.POST.get('long_tables_quantity') or 0),
             'Mono Block Chairs': int(request.POST.get('mono_block_chairs_quantity') or 0),
@@ -126,7 +120,6 @@ def user_makereservation(request):
             'Digital Clock': int(request.POST.get('digital_clock_quantity') or 0),
             'Others': request.POST.get('others_specify', ''),
         }
-        # Manpower Needed (quantities)
         manpower_needed = {
             'Security': int(request.POST.get('security_quantity') or 0),
             'Janitor': int(request.POST.get('janitor_quantity') or 0),
@@ -137,15 +130,12 @@ def user_makereservation(request):
             'Plumber': int(request.POST.get('plumber_quantity') or 0),
             'Other': int(request.POST.get('other_manpower_quantity') or 0),
         }
-        # File upload
         letter = request.FILES.get('letter')
 
-        # Validate required fields
         required_fields = [organization, representative, contact_number, date_list, start_time, end_time, facilities, event_types, letter]
         if not all(required_fields):
             messages.error(request, 'Please fill in all required fields.')
             return redirect('user_portal:user_makereservation')
-        # Overlap check for each date and facility
         blocked_found = False
         blocked_message = None
         for date in date_list:
@@ -168,7 +158,6 @@ def user_makereservation(request):
         if blocked_found:
             messages.error(request, blocked_message or 'Please review your reservation. One or more selected dates and facilities are blocked.')
             return redirect('user_portal:user_makereservation')
-        # Existing reservation overlap check
         for date in date_list:
             overlap = Reservation.objects.filter(
                 facility__in=facilities,
@@ -179,7 +168,6 @@ def user_makereservation(request):
             if overlap:
                 messages.error(request, 'The selected facility, date, or time is already reserved. Please look at the calendar.')
                 return redirect('user_portal:user_makereservation')
-        # Save a reservation for each selected date
         try:
             reserved_dates_str = ', '.join(date_list)
             for date in date_list:
@@ -188,22 +176,21 @@ def user_makereservation(request):
                     organization=organization,
                     representative=representative,
                     contact_number=contact_number,
-                    date=date,  # This is the actual use date for this reservation
-                    date_reserved=date_reserved,  # Save Date Reserved
+                    date=date,
+                    date_reserved=date_reserved,
                     start_time=start_time,
                     end_time=end_time,
                     facility=", ".join(facilities),
-                    facility_use=", ".join(facilities),  # Save to facility_use for display
+                    facility_use=", ".join(facilities),
                     event_type=event_type,
-                    insider_count=int(request.POST.get('insider_count') or 0),  # <-- FIX: Save insider count
-                    outsider_count=int(request.POST.get('outsider_count') or 0),  # <-- FIX: Save outsider count
+                    insider_count=int(request.POST.get('insider_count') or 0),
+                    outsider_count=int(request.POST.get('outsider_count') or 0),
                     facilities_needed=facilities_needed,
                     manpower_needed=manpower_needed,
                     status="Pending",
                     letter=letter if hasattr(Reservation, 'letter') else None,
                     reserved_dates=reserved_dates_str if hasattr(Reservation, 'reserved_dates') else None
                 )
-                # Save the uploaded letter file if the Reservation model has a FileField for it
                 if letter and hasattr(reservation, 'letter'):
                     reservation.letter = letter
                     reservation.save()
@@ -220,7 +207,6 @@ def user_makereservation(request):
 def edit_reservation(request, id):
     reservation = get_object_or_404(Reservation, pk=id)
     
-    # Prevent editing if reservation is completed
     if reservation.status == 'Completed':
         messages.error(request, "Cannot edit a completed reservation.")
         return redirect('user_portal:user_myreservation')
@@ -230,11 +216,9 @@ def edit_reservation(request, id):
         reservation.start_time = request.POST.get('start_time')
         reservation.end_time = request.POST.get('end_time')
 
-        # Update facilities to be used
-        facilities = request.POST.getlist('facility_use')  # Name should match the checkbox name
+        facilities = request.POST.getlist('facility_use')
         reservation.facility_use = ", ".join(facilities)
 
-        # Update facilities needed
         reservation.facilities_needed = {
             'long_tables': int(request.POST.get('long_tables_quantity') or 0),
             'mono_block_chairs': int(request.POST.get('mono_block_chairs_quantity') or 0),
@@ -256,7 +240,6 @@ def edit_reservation(request, id):
             'others': request.POST.get('others_specify', ''),
         }
 
-        # Update manpower needed
         reservation.manpower_needed = {
             'security': int(request.POST.get('security_quantity') or 0),
             'janitor': int(request.POST.get('janitor_quantity') or 0),
@@ -271,18 +254,16 @@ def edit_reservation(request, id):
         reservation.save()
         return redirect('user_portal:user_myreservation')
 
-    # Prepopulate facility_use as list
     facilities_list = reservation.facility_use.split(', ') if reservation.facility_use else []
 
-    # Prepare facilities_quantity and manpower_quantity dictionaries
     facilities_quantity = reservation.facilities_needed if reservation.facilities_needed else {}
     manpower_quantity = reservation.manpower_needed if reservation.manpower_needed else {}
 
     return render(request, 'user_portal/edit_reservation.html', {
         'reservation': reservation,
-        'facilities_list': facilities_list,  # for checked checkboxes
-        'facilities_quantity': facilities_quantity,  # for facilities quantities
-        'manpower_quantity': manpower_quantity,  # for manpower quantities
+        'facilities_list': facilities_list,
+        'facilities_quantity': facilities_quantity,
+        'manpower_quantity': manpower_quantity,
     })
 
 
@@ -299,17 +280,14 @@ def delete_reservation(request, id):
 def user_calendar(request):
     return render(request, 'user_portal/user_calendar.html')
 
-# USER DASHBOARD VIEW
 @login_required
 def user_dashboard(request):
     user_reservations = Reservation.objects.filter(user=request.user).order_by('-date')
     
-    # Group reservations by status
     pending_reservations = user_reservations.filter(status__in=['Pending', 'Admin Approved', 'Billing Uploaded', 'Payment Pending', 'Payment Approved', 'Security Pass Issued'])
-    approved_reservations = user_reservations.filter(status='Completed')  # Only completed reservations with confirmed security pass
+    approved_reservations = user_reservations.filter(status='Completed')
     rejected = user_reservations.filter(status='Rejected')
     
-    # Add formatted time to each reservation
     for reservation in user_reservations:
         reservation.formatted_time = f"{reservation.start_time.strftime('%I:%M %p')} - {reservation.end_time.strftime('%I:%M %p')}"
     
@@ -321,7 +299,6 @@ def user_dashboard(request):
     }
     return render(request, 'user_portal/user_dashboard.html', context)
 
-# chatgpt ----------------------------------------------------------------------------------
 @login_required
 def get_user_calendar_events(request):
     approved_reservations = Reservation.objects.filter(user=request.user, status='Approved')
@@ -362,7 +339,7 @@ def update_profile(request):
             profile_instance = profile_form.save(commit=False)
 
             if profile.role != "Student of XU":
-                profile_instance.course = ''  # Always clear course for non-students
+                profile_instance.course = ''
 
             profile_instance.save()
 
@@ -380,17 +357,13 @@ def update_profile(request):
 
 @login_required
 def get_reservations(request):
-    # Get completed reservations for the calendar
     reservations = Reservation.objects.filter(status='Completed')
     
-    # Get blocked dates
     blocked_dates = BlockedDate.objects.all()
     
     events = []
     
-    # Add completed reservations
     for r in reservations:
-        # Convert facilities_needed to a string with quantities (assuming it's a dictionary)
         facilities_list = []
         if isinstance(r.facilities_needed, dict):
             for facility, quantity in r.facilities_needed.items():
@@ -398,7 +371,6 @@ def get_reservations(request):
         else:
             facilities_list.append('None')
 
-        # Convert manpower_needed to a string with quantities (assuming it's a dictionary)
         manpower_list = []
         if isinstance(r.manpower_needed, dict):
             for manpower, quantity in r.manpower_needed.items():
@@ -407,17 +379,16 @@ def get_reservations(request):
             manpower_list.append('None')
 
         events.append({
-            'title': r.facility_use,  # assuming facility_use is a string
+            'title': r.facility_use,
             'start': f"{r.date}T{r.start_time}",
             'end': f"{r.date}T{r.end_time}",
             'event_type': r.event_type,
             'facilities_needed': ', '.join(facilities_list) if facilities_list else 'None',
             'manpower_needed': ', '.join(manpower_list) if manpower_list else 'None',
             'status': r.status,
-            'color': '#28a745'  # Green for completed reservations
+            'color': '#28a745'
         })
     
-    # Add blocked dates
     for bd in blocked_dates:
         events.append({
             'title': f"{bd.facility.name} (Blocked)",
@@ -427,7 +398,7 @@ def get_reservations(request):
             'facilities_needed': bd.facility.name,
             'manpower_needed': 'None',
             'status': 'Blocked',
-            'color': '#dc3545',  # Red for blocked dates
+            'color': '#dc3545',
             'extendedProps': {
                 'reason': bd.reason
             }
@@ -444,7 +415,7 @@ def edit_profile(request):
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
-            return redirect('user_portal:user_profile')  # Redirect to profile after save
+            return redirect('user_portal:user_profile')
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileUpdateForm(instance=request.user.profile)
@@ -508,7 +479,6 @@ def send_notification(user, message):
     notification = Notification.objects.create(user=user, message=message)
     notification.save()
 
-# Call this function when a reservation is approved or rejected
 def approve_reservation(reservation):
     reservation.status = "Approved"
     reservation.save()
@@ -525,24 +495,18 @@ def update_reservation_status(request, reservation_id, status):
     reservation.status = status
     reservation.save()
 
-    # Send a notification to the user
     send_notification(reservation.user, f"Your reservation for {reservation.facility} is now {status}.")
 
     return redirect('user_portal:user_myreservation')
 
 @login_required
 def upload_receipt(request, reservation_id):
-    """Upload or re-upload payment receipt for a reservation"""
     reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
 
-    # Prevent uploading if reservation is completed
     if reservation.status == 'Completed':
         messages.error(request, "Cannot upload payment receipt for a completed reservation.")
         return redirect('user_portal:user_myreservation')
 
-    # Allow upload if:
-    # - Billing Uploaded (first upload)
-    # - Payment Rejected (re-upload)
     if reservation.status not in ['Billing Uploaded', 'Payment Rejected']:
         messages.error(request, "Cannot upload payment receipt. Billing statement must be uploaded first or previous payment must be rejected.")
         return redirect('user_portal:user_myreservation')
@@ -551,15 +515,13 @@ def upload_receipt(request, reservation_id):
         receipt_file = request.FILES.get('payment_receipt')
         if receipt_file:
             reservation.payment_receipt = receipt_file
-            reservation.status = 'Payment Pending'  # Always go to pending for review
+            reservation.status = 'Payment Pending'
             reservation.save()
 
-            # Save the receipt file in the appropriate directory
             receipt_file_path = os.path.join(settings.MEDIA_ROOT, 'receipts', receipt_file.name)
             with open(receipt_file_path, 'wb+') as destination:
                 for chunk in receipt_file.chunks():
                     destination.write(chunk)
-            # Notify superuser
             Notification.objects.create(
                 user=User.objects.filter(is_superuser=True).first(),
                 message=f"A payment receipt has been uploaded for reservation {reservation.id} at {reservation.facility_use} on {reservation.date}. Please verify the payment.",
@@ -572,11 +534,9 @@ def upload_receipt(request, reservation_id):
 
 @login_required
 def my_reservations(request):
-    """View all user reservations"""
     reservations = Reservation.objects.filter(user=request.user).order_by('-date')
     
     for reservation in reservations:
-        # Show the reserved dates if available, else show the single date
         if hasattr(reservation, 'reserved_dates') and reservation.reserved_dates:
             reservation.display_dates = reservation.reserved_dates
             reservation.display_dates_list = [d.strip() for d in reservation.reserved_dates.split(',') if d.strip()]
@@ -584,13 +544,10 @@ def my_reservations(request):
             reservation.display_dates = reservation.date
             reservation.display_dates_list = [str(reservation.date)]
 
-        # --- Enhanced status logic for user dashboard ---
         admin_approval_count = len(reservation.admin_approvals or {})
         admin_rejection_count = len(reservation.admin_rejections or {})
-        # Default: allow edit/delete unless rejected or completed
         reservation.can_edit = reservation.status not in ['Rejected', 'Completed']
         reservation.can_delete = True
-        # Status logic
         if reservation.status == 'Rejected' or admin_rejection_count > 0:
             reservation.display_status = 'Rejected by admin(s)'
             reservation.can_edit = False
@@ -605,7 +562,8 @@ def my_reservations(request):
         elif reservation.status == 'Payment Approved':
             reservation.display_status = 'Processing (payment verified, wait for security pass)'
         elif reservation.status == 'Security Pass Issued':
-            reservation.display_status = 'Processing (security pass issued, wait for completion)'
+            # Show billing as approved and security pass as issued
+            reservation.display_status = 'Billing approved, security pass issued, wait for completion'
         elif reservation.status == 'Completed':
             reservation.display_status = 'Completed'
         else:
@@ -685,13 +643,9 @@ def make_reservation(request):
 @login_required
 def upload_security_pass(request, reservation_id):
     reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
-    # Prevent uploading if reservation is completed
     if reservation.status == 'Completed':
         messages.error(request, "Cannot upload security pass for a completed reservation.")
         return redirect('user_portal:user_myreservation')
-    # Allow upload if:
-    # - Security Pass Issued (first upload)
-    # - security_pass_status == 'Rejected' (re-upload)
     if reservation.status != 'Security Pass Issued' and reservation.security_pass_status != 'Rejected':
         messages.error(request, "Cannot upload security pass. Security pass must be issued by the superuser first or previous pass must be rejected.")
         return redirect('user_portal:user_myreservation')
@@ -699,10 +653,8 @@ def upload_security_pass(request, reservation_id):
         pass_file = request.FILES.get('security_pass_returned')
         if pass_file:
             reservation.security_pass_returned = pass_file
-            reservation.security_pass_status = 'Pending'  # Always go to pending for review
-            # reservation.security_pass_rejection_reason = ''  # Do NOT clear previous rejection reason on reupload, so frontend can detect reuploads
+            reservation.security_pass_status = 'Pending'
             reservation.save()
-            # Create notification for superuser about security pass upload
             Notification.objects.create(
                 user=User.objects.filter(is_superuser=True).first(),
                 message=f"A security pass has been uploaded for reservation {reservation.id} at {reservation.facility_use} on {reservation.date}. Please verify the security pass.",
@@ -727,7 +679,6 @@ def check_date_availability(request):
             'error': 'Missing required parameters'
         })
     
-    # Check for blocked dates
     blocked = BlockedDate.objects.filter(
         facility__name=facility,
         date=date,
@@ -745,7 +696,6 @@ def check_date_availability(request):
             'blocked_facility': blocked.facility.name,
         })
     
-    # Check for existing reservations
     overlap = Reservation.objects.filter(
         facility__icontains=facility,
         date=date,

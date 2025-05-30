@@ -122,14 +122,23 @@
             },
 
             eventClick: function (info) {
-                // Redirect to dashboard with the selected reservation
-                window.location.href = `{% url 'admin_portal:admin_dashboard' %}?id=${info.event.extendedProps.id}`;
+                
+                const p = info.event.extendedProps;
+                const eventId = p.id || info.event.id;
+                if (p.event_type === 'Blocked' || p.is_blocked) {
+                    alert('This is a blocked date.\nReason: ' + (p.reason || 'N/A'));
+                } else if (eventId) {
+                    const details = `Facility: ${info.event.title}\nDate: ${info.event.start.toLocaleDateString()}\nTime: ${info.event.start.toLocaleTimeString()} - ${info.event.end ? info.event.end.toLocaleTimeString() : "TBD"}\nEvent Type: ${p.event_type || 'N/A'}\nFacilities Needed: ${p.facilities_needed || 'None'}\n\nManpower Breakdown:\n\nTotal Needed: ${p.manpower_needed || 0}`;
+                    alert(details);
+                } else {
+                    alert('This is a reserved date, but no reservation details are available.');
+                }
             }
         });
 
         calendar.render();
         
-        // Add event listener to facility filter
+        
         facilityFilter.addEventListener('change', function() {
             calendar.getEventSources()[0].refetch();
         });

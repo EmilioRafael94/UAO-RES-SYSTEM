@@ -181,7 +181,7 @@
             <div class="make_reservation-form-group">
                 <label>Other Facilities Needed (Indicate Quantity)</label>
                 <div class="make_reservation-facilities-grid">
-                    <!-- Tables 1–4 -->
+                   
                     <table>
                         <tr><td>Long Tables</td><td><input type="number" name="long_tables_quantity" min="0"></td></tr>
                         <tr><td>Mono Block Chairs</td><td><input type="number" name="mono_block_chairs_quantity" min="0"></td></tr>
@@ -257,7 +257,7 @@
                 flatpickr('#dates', {
                     mode: 'multiple',
                     dateFormat: 'Y-m-d',
-                    minDate: today // Prevent past dates
+                    minDate: today 
                 });
             }
         });
@@ -269,14 +269,14 @@
                 flatpickr('#dates', {
                     mode: 'multiple', 
                     dateFormat: 'Y-m-d',
-                    minDate: today // Add this line to prevent past dates
+                    minDate: today 
                 });
             } else {
-                // fallback: let user type comma-separated dates
+                
                 document.getElementById('dates').removeAttribute('readonly');
                 document.getElementById('dates').setAttribute('placeholder', 'YYYY-MM-DD,YYYY-MM-DD,...');
             }
-            // Remove clock-based validation, use per-hour dropdowns
+            
             const form = document.getElementById('reservationForm');
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -288,7 +288,7 @@
                     return;
                 }
                 
-                // Get selected dates and facilities
+                
                 const datesInput = document.getElementById('dates').value;
                 if (!datesInput) {
                     alert('Please select at least one date.');
@@ -298,7 +298,7 @@
                 const selectedDates = datesInput.split(',');
                 const today = new Date().toISOString().split('T')[0];
                 
-                // Check for past dates
+                
                 for (let date of selectedDates) {
                     date = date.trim();
                     if (date < today) {
@@ -307,14 +307,14 @@
                     }
                 }
                 
-                // Get selected facilities
+                
                 const facilities = Array.from(document.querySelectorAll('input[name="facilities"]:checked')).map(cb => cb.value);
                 if (facilities.length === 0) {
                     alert('Please select at least one facility.');
                     return;
                 }
                 
-                // Check availability for each date and facility combination
+                
                 for (let date of selectedDates) {
                     date = date.trim();
                     for (let facility of facilities) {
@@ -344,13 +344,13 @@
                     }
                 }
                 
-                // If all checks pass, submit the form
+                
                 form.submit();
             });
         });
     </script>
 
-    <!-- Error Modal -->
+    
     <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -359,7 +359,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body" id="errorModalBody">
-            <!-- Error message will be inserted here -->
+            
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>

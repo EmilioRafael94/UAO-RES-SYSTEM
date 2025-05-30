@@ -71,7 +71,7 @@
                             {% endif %}
                         </div>
                         <hr>
-                        <!-- Billing & Payment Info -->
+                        
                         <div class="row">
                             <div class="col-md-12">
                                 <h5>Billing & Payment</h5>
@@ -129,6 +129,8 @@
                                                     Rejected
                                                 {% elif reservation.status == 'Completed' %}
                                                     Verified
+                                                {% elif reservation.status == 'Security Pass Issued' %}
+                                                    Billing approved, security pass issued, wait for completion
                                                 {% elif reservation.payment_receipt %}
                                                     Pending
                                                 {% else %}
@@ -147,7 +149,7 @@
                                 </table>
                             </div>
                         </div>
-                        <!-- Security Pass Table -->
+                        
                         <div class="row mt-4">
                             <div class="col-md-12">
                                 <h5>Security Pass</h5>
@@ -217,7 +219,7 @@
                                 </table>
                             </div>
                         </div>
-                        <!-- End Security Pass Table -->
+                        
                     </div>
                 </div>
             </div>

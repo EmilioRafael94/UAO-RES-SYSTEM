@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from user_portal.models import Profile
 from reservations.models import Reservation
 
-# User update form (for logged-in users to update their account info)
 class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
@@ -13,10 +12,9 @@ class UserUpdateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
-        self.fields['email'].disabled = True  # Email should not be editable
+        self.fields['email'].disabled = True
 
 
-# Profile update form (used when updating profile, e.g. from settings)
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Profile
@@ -28,14 +26,12 @@ class ProfileUpdateForm(forms.ModelForm):
         for name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
         
-        # Make 'course' uneditable if role is Alumni/Guest
         if instance and instance.role == "Alumni/Guest":
             self.fields['course'].disabled = True
         else:
             self.fields['course'].required = True
 
 
-# User creation/edit form (used during registration or by admin)
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
@@ -47,7 +43,6 @@ class UserForm(forms.ModelForm):
         }
 
 
-# Full profile form (used during registration or by admin)
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
@@ -67,7 +62,6 @@ class ProfileForm(forms.ModelForm):
             field.widget.attrs['class'] = 'form-control'
 
 
-# Reservation form (used for making reservations)
 class ReservationForm(forms.ModelForm):
     class Meta:
         model = Reservation

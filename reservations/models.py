@@ -7,7 +7,7 @@ from django.utils import timezone
 class Reservation(models.Model):
     STATUS_CHOICES = (
         ('Pending', _('Pending')),
-        ('Admin Approved', _('Admin Approved')),  # When 4 admins approve
+        ('Admin Approved', _('Admin Approved')),
         ('Billing Uploaded', _('Billing Uploaded')),
         ('Payment Pending', _('Payment Pending')),
         ('Payment Approved', _('Payment Approved')),
@@ -22,18 +22,15 @@ class Reservation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Admin approval tracking
-    admin_approvals = models.JSONField(default=dict, blank=True)  # Store admin usernames and their approval timestamps
-    admin_rejections = models.JSONField(default=dict, blank=True)  # Store admin usernames and their rejection reasons
+    admin_approvals = models.JSONField(default=dict, blank=True)
+    admin_rejections = models.JSONField(default=dict, blank=True)
 
-    # Basic reservation info
     title = models.CharField(max_length=255, blank=True)
     start_time = models.TimeField(default="00:00:00")
     end_time = models.TimeField(default="00:00:00")
     contact_number = models.CharField(max_length=20, blank=True)
     reasons = models.TextField(blank=True)
 
-    # Payment and documents
     billing_statement = models.FileField(upload_to='billing_statements/', null=True, blank=True)
     payment_receipt = models.FileField(upload_to='receipts/', blank=True, null=True)
     security_pass = models.FileField(upload_to='passes/', blank=True, null=True)
@@ -43,13 +40,11 @@ class Reservation(models.Model):
     security_pass_status = models.CharField(max_length=20, choices=[('Pending', 'Pending'), ('Confirmed', 'Confirmed'), ('Rejected', 'Rejected')], default='Pending')
     security_pass_rejection_reason = models.TextField(blank=True, null=True)
 
-    # Reservation details
     facility = models.CharField(max_length=255)
     facility_use = models.CharField(max_length=255, blank=True)
     date = models.DateField()
     date_reserved = models.DateField(null=True, blank=True)
 
-    # Additional information
     organization = models.CharField(max_length=255, blank=True)
     representative = models.CharField(max_length=255, blank=True)
     event_type = models.CharField(max_length=100, blank=True)
@@ -58,11 +53,9 @@ class Reservation(models.Model):
     facilities_needed = models.JSONField(default=dict, blank=True)
     manpower_needed = models.JSONField(default=dict, blank=True)
 
-    # Admin comments and notes
     admin_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True)
 
-    # Payment verification fields
     payment_verified = models.BooleanField(default=False)
     payment_verified_date = models.DateTimeField(null=True, blank=True)
     payment_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, 
@@ -111,7 +104,6 @@ class Reservation(models.Model):
         }
         self.admin_approvals = approvals
         
-        # If we have 4 unique admin approvals, update status
         if len(approvals) >= 4:
             self.status = 'Admin Approved'
         

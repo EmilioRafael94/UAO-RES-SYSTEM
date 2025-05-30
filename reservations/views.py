@@ -18,7 +18,7 @@ def make_reservation(request):
         if form.is_valid():
             reservation = form.save(commit=False)
             reservation.user = request.user
-            reservation.date_reserved = timezone.localdate()  # Set the reservation date to today
+            reservation.date_reserved = timezone.localdate()
             reservation.save()
             messages.success(request, 'Reservation submitted successfully.')
             return redirect('user_dashboard')

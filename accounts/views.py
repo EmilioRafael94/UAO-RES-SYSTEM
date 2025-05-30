@@ -25,14 +25,12 @@ from django.utils.html import strip_tags
 
 
 def register(request):
-    # Step 1: Registration details form
     if request.method == 'POST' and not request.session.get('pending_registration'):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data.get('username')
             email = form.cleaned_data.get('email')
 
-            # Check for duplicate username or email
             if User.objects.filter(username=username).exists():
                 form.add_error('username', "Username is already taken.")
             elif User.objects.filter(email=email).exists():
@@ -49,7 +47,6 @@ def register(request):
                     phone = form.cleaned_data['phone']
                     password = form.cleaned_data['password1']
                     verification_code = f"{random.randint(100000, 999999)}"
-                    # Set role to Alumni/Guest for all new registrations
                     request.session['pending_registration'] = {
                         'username': username,
                         'email': email,
@@ -72,7 +69,6 @@ def register(request):
                     form.add_error(None, str(e))
         return render(request, 'register.html', {'form': form})
 
-    # Step 2: Code verification form
     elif request.method == 'POST' and request.session.get('pending_registration'):
         code = request.POST.get('verification_code')
         pending = request.session['pending_registration']
@@ -107,58 +103,52 @@ def register(request):
         return render(request, 'register.html', {'form': form})
 
 
-# Role-based redirect view
 @login_required
 def role_redirect_view(request):
     if request.user.is_superuser:
-        return redirect('superuser_dashboard')  # Replace with your superuser dashboard URL
+        return redirect('superuser_dashboard')
     elif request.user.is_staff:
-        return redirect('admin_dashboard')  # Replace with your admin dashboard URL
+        return redirect('admin_dashboard')
     else:
-        return redirect('user_dashboard')  # Replace with your user dashboard URL
+        return redirect('user_dashboard')
 
-# Login view
 def login_view(request):
-    # Check for social-auth error in GET params
     social_auth_error = None
     error = request.GET.get('error')
     if error == 'forbidden':
         social_auth_error = 'Only @my.xu.edu.ph Google accounts are allowed.'
 
     if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)  # Pass the request to the form
+        form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            user = form.get_user()  # Get the user object
+            user = form.get_user()
             login(request, user)
             messages.success(request, f"Welcome back {user.username}!")
-            return redirect('home')  # Redirect to the home page or dashboard after successful login
+            return redirect('home')
         else:
-            # Invalid login attempt, show error message
             form.add_error(None, "Invalid username or password.")
     else:
-        form = AuthenticationForm()  # Create an empty form instance for GET request
+        form = AuthenticationForm()
 
-    return render(request, 'login.html', {'form': form, 'social_auth_error': social_auth_error})  # Pass the form to the template
+    return render(request, 'login.html', {'form': form, 'social_auth_error': social_auth_error})
 
-# Home redirect view after login based on user role
 @login_required
 def home_redirect(request):
     if request.user.is_superuser:
-        return redirect('superuser_portal:superuser_dashboard')  # Superuser dashboard
+        return redirect('superuser_portal:superuser_dashboard')
     elif request.user.is_staff:
-        return redirect('admin_portal:admin_dashboard')  # Admin dashboard
+        return redirect('admin_portal:admin_dashboard')
     else:
-        return redirect('user_portal:user_dashboard')  # User dashboard
+        return redirect('user_portal:user_dashboard')
 
 
-# User dashboard view (for logged-in users)
 @login_required
 def dashboard(request):
     return render(request, 'user_portal/dashboard.html')
 
 def logout_view(request):
     logout(request)
-    return redirect('login')  # Or wherever your login page is
+    return redirect('login')
 
 def user_register(request):
     if request.method == 'POST':
@@ -201,7 +191,6 @@ def google_auth_forbidden(request):
     """
     return render(request, 'accounts/google_auth_forbidden.html')
 
-# Password reset functionality
 def forgot_password(request):
     """
     Handle the forgot password functionality for @gmail.com users.
@@ -210,43 +199,33 @@ def forgot_password(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
         
-        # Only process if it's a @gmail.com email
         if not email.endswith('@gmail.com'):
-            # Still show the same message
             messages.success(request, "If an account with that email exists, a password reset link has been sent.")
             return render(request, 'forgot_password.html')
             
-        # Check if the user exists
         try:
             user = User.objects.get(email=email)
             
-            # Check if this is a Google OAuth user (which we don't want to send reset links to)
             try:
                 social_user = user.social_auth.filter(provider='google-oauth2').first() if hasattr(user, 'social_auth') else None
                 if social_user:
-                    # Don't disclose this is a Google account - just show the standard message
                     messages.success(request, "If an account with that email exists, a password reset link has been sent.")
                     return render(request, 'forgot_password.html')
             except:
-                # If social_auth module is not available or any error occurs, continue with the reset flow
                 pass
                 
-            # Generate a secure token
             token = secrets.token_urlsafe(32)
             
-            # Store the token with the user's ID and expiration time in cache (24-hour expiry)
             cache_key = f'password_reset_{token}'
             reset_data = {
                 'user_id': user.id,
                 'email': email,
                 'expiry': timezone.now() + timedelta(hours=24)
             }
-            cache.set(cache_key, reset_data, timeout=60*60*24)  # 24 hours
+            cache.set(cache_key, reset_data, timeout=60*60*24)
             
-            # Create the reset URL
             reset_url = request.build_absolute_uri(f'/accounts/reset-password/{token}/')
             
-            # Email content
             subject = "Password Reset Request"
             html_content = render_to_string('password_reset_email.html', {
                 'user': user,
@@ -254,7 +233,6 @@ def forgot_password(request):
             })
             text_content = strip_tags(html_content)
             
-            # Send the email
             try:
                 send_mail(
                     subject,
@@ -265,14 +243,11 @@ def forgot_password(request):
                     fail_silently=False,
                 )
             except Exception as e:
-                # Handle email sending error - log but don't show error to user
                 print(f"Failed to send password reset email: {e}")
                 
         except User.DoesNotExist:
-            # User doesn't exist but we don't reveal this
             pass
         
-        # Always return the same message regardless of whether the email exists or not
         messages.success(request, "If an account with that email exists, a password reset link has been sent.")
         return render(request, 'forgot_password.html')
         
@@ -281,22 +256,18 @@ def forgot_password(request):
 
 def reset_password(request, token):
     """Handle the password reset with a valid token."""
-    # Get the token data from cache
     cache_key = f'password_reset_{token}'
     reset_data = cache.get(cache_key)
     
-    # Check if token exists and is valid
     if not reset_data:
         messages.error(request, "Invalid or expired password reset link. Please request a new one.")
         return redirect('accounts:forgot_password')
         
-    # Check if token has expired
     if timezone.now() > reset_data['expiry']:
         cache.delete(cache_key)
         messages.error(request, "This password reset link has expired. Please request a new one.")
         return redirect('accounts:forgot_password')
     
-    # Get the user
     try:
         user = User.objects.get(id=reset_data['user_id'], email=reset_data['email'])
     except User.DoesNotExist:
@@ -305,28 +276,22 @@ def reset_password(request, token):
         return redirect('accounts:forgot_password')
     
     if request.method == 'POST':
-        # Process the password reset form
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         
-        # Validate password length and complexity
         if not password or len(password) < 8:
             messages.error(request, "Please enter a valid password (minimum 8 characters).")
             return render(request, 'reset_password.html', {'token': token})
             
-        # Validate password matching
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
             return render(request, 'reset_password.html', {'token': token})
             
-        # Update the password
         user.set_password(password)
         user.save()
         
-        # Delete the token from cache
         cache.delete(cache_key)
         
-        # Send notification email about password reset
         try:
             current_time = timezone.now()
             subject = "Your Password Has Been Reset"
@@ -342,15 +307,13 @@ def reset_password(request, token):
                 settings.DEFAULT_FROM_EMAIL,
                 [user.email],
                 html_message=html_content,
-                fail_silently=True,  # Don't let email errors affect user experience
+                fail_silently=True,
             )
         except Exception as e:
-            # Log the error but continue with the flow
             print(f"Failed to send password reset notification: {e}")
         
         messages.success(request, "Your password has been reset successfully. You can now log in with your new password.")
         return redirect('accounts:login')
     
-    # Display the reset password form
     return render(request, 'reset_password.html', {'token': token})
 

@@ -22,7 +22,6 @@ def send_reservation_email(user, subject, template_name, context):
         msg.send()
         return True
     except Exception as e:
-        # Gmail SMTP daily limit error code is often 454 or 421, or message contains 'Daily user sending quota exceeded'
         error_message = str(e)
         if (
             'quota' in error_message.lower() or
@@ -31,7 +30,7 @@ def send_reservation_email(user, subject, template_name, context):
             'exceeded' in error_message.lower()
         ):
             logging.error(f"Gmail SMTP daily limit reached. No more emails will be sent today. Error: {error_message}")
-            cache.set('gmail_smtp_limit_reached', True, timeout=60*60*12)  # 12 hours
+            cache.set('gmail_smtp_limit_reached', True, timeout=60*60*12)
         else:
             logging.error(f"Failed to send reservation email to {email}: {error_message}")
         return False

@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 
-app_name = 'user_portal'  # This matches the namespace used in your views
+app_name = 'user_portal'
 
 urlpatterns = [
     path('dashboard/', views.user_dashboard, name='user_dashboard'),

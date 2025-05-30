@@ -36,19 +36,15 @@ class ReservationForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         
-        # Add additional validations here if needed
-        # Example: Check if the facility is available on the given date and time slot
         facility = cleaned_data.get('facility')
         date = cleaned_data.get('date')
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
         
         if facility and date and start_time and end_time:
-            # Validate time range
             if start_time >= end_time:
                 raise ValidationError("End time must be after start time.")
             
-            # Exclude self when editing
             instance_id = self.instance.id if self.instance and self.instance.pk else None
             
             conflicting_reservations = Reservation.objects.filter(

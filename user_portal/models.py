@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.urls import reverse
 from django.shortcuts import redirect
-from reservations.models import Reservation  # Use the unified Reservation model
+from reservations.models import Reservation
 
 class Profile(models.Model):
     ROLE_CHOICES = [
@@ -20,7 +20,6 @@ class Profile(models.Model):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='Student of XU')
     id_type = models.CharField(max_length=50, blank=True, null=True)
     id_upload = models.FileField(upload_to='id_uploads/', blank=True, null=True)
-    # Email verification fields
     is_verified = models.BooleanField(default=False)
     verification_code = models.CharField(max_length=6, blank=True, null=True)
 
@@ -56,8 +55,6 @@ def make_reservation(request):
             messages.error(request, "Please fill in all required fields.")
             return redirect('user_portal:user_makereservation')
 
-        # Proceed with reservation creation
-        # ... (rest of the view logic)
 
     return redirect('user_portal:user_makereservation')
 

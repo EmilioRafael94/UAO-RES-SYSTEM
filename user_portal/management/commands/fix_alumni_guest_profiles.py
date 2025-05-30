@@ -7,7 +7,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         updated = 0
         for profile in Profile.objects.all():
-            # If the user email is not @my.xu.edu.ph, or the username is guest, or role is not Student of XU
             if not profile.user.email.endswith('@my.xu.edu.ph') or profile.user.username == 'guest' or profile.role != 'Student of XU':
                 profile.role = 'Alumni/Guest'
                 profile.course = ''
